@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import torch
 from torch import optim
 
@@ -15,7 +16,7 @@ def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, f
     batch_size = hyperparameters_dict["batch_size"]
     
     config_string = f"epochs{n_epochs}_lr{lr}_wd{weight_decay}_bs{batch_size}"
-    checkpoint_path = os.path.join(flow_training_dir, f"{config_string_BD_sim}")
+    checkpoint_path = os.path.join(flow_training_dir, f"{config_string}")
 
     # send network to device
     flow.to(device)
