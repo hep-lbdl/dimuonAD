@@ -2,8 +2,8 @@ import numpy as np
 
 from nflows.flows.base import Flow
 from nflows.transforms.autoregressive import MaskedAffineAutoregressiveTransform, MaskedPiecewiseRationalQuadraticAutoregressiveTransform
+from nflows.transforms.base import CompositeTransform
 from nflows.distributions.normal import StandardNormal
-
 
 from nflows.transforms.permutations import ReversePermutation
 from nflows.transforms.lu import LULinear
