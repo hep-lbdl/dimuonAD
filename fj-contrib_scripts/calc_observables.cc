@@ -19,14 +19,19 @@
 #include "Nsubjettiness.hh" // In external code, this should be fastjet/contrib/Nsubjettiness.hh
 #include "Njettiness.hh"
 #include "NjettinessPlugin.hh"
-#include "XConePlugin.hh"
+#include "SoftDrop.hh"
 
 using namespace std;
 using namespace fastjet;
 using namespace fastjet::contrib;
 
-string events_file_path = "/global/u1/r/rmastand/dimuonAD/test_event.dat";
-string output_file_path = "/global/u1/r/rmastand/dimuonAD/test_output.txt";
+// data
+string input_file_path = "/global/u1/r/rmastand/dimuonAD/data_pre_fj/hadrons_only_od.dat";
+string output_file_path = "/global/u1/r/rmastand/dimuonAD/data_post_fj/jet_obs_od.dat";
+
+// sim
+//string input_file_path = "/global/u1/r/rmastand/dimuonAD/data_pre_fj/hadrons_only_sim_zmm_forcms_1k-mz90.1-mw80.4_8000030.dat";
+//string output_file_path = "/global/u1/r/rmastand/dimuonAD/data_post_fj/jet_obs_sim_zmm_forcms_1k-mz90.1-mw80.4_8000030.dat";
 
 // forward declaration to make things clearer
 vector<vector<PseudoJet>> read_event(string infile_path);
@@ -36,7 +41,7 @@ void analyze(const vector<PseudoJet> & input_particles, ofstream& outfile);
 int main(){
 
     // Read in events
-    vector<vector<PseudoJet>> all_events = read_event(events_file_path);
+    vector<vector<PseudoJet>> all_events = read_event(input_file_path);
 
     // Test correct output
     int num_events = all_events.size();
@@ -65,6 +70,9 @@ int main(){
     }
     
     outfile.close();
+    
+        
+    cout << "Done!" << endl;
     
   return 0;
     
@@ -133,88 +141,41 @@ void analyze(const vector<PseudoJet> & input_particles, ofstream& outfile) {
    // Initial clustering with anti-kt algorithm
    JetAlgorithm algorithm = antikt_algorithm;
    double jet_rad = 1.00; // jet radius for anti-kt algorithm
-   JetDefinition jetDef = JetDefinition(algorithm,jet_rad,E_scheme,Best);
-   ClusterSequence clust_seq(input_particles,jetDef);
+   JetDefinition jetDef = JetDefinition(algorithm, jet_rad, E_scheme, Best);
+   ClusterSequence clust_seq(input_particles, jetDef);
    vector<PseudoJet> antikt_jets  = sorted_by_pt(clust_seq.inclusive_jets());
    
-   for (int j = 0; j < 2; j++) { // Two hardest jets per event
+   for (int j = 0; j < 1; j++) { // Only look at the leading jet
 
       // get the jet for analysis
       PseudoJet this_jet = antikt_jets[j];
-      
-      cout << "-------------------------------------------------------------------------------------" << endl;
-      cout << "Analyzing Jet " << j + 1 << ":" << endl;
-      cout << "-------------------------------------------------------------------------------------" << endl;
-      
-      ////////
-      //
-      //  Basic checks of tau values first
-      //
-      //  If you don't want to know the directions of the subjets,
-      //  then you can use the simple function Nsubjettiness.
-      //
-      //  Recommended usage for Nsubjettiness:
-      //  AxesMode:  KT_Axes(), WTA_KT_Axes(), OnePass_KT_Axes(), or OnePass_WTA_KT_Axes()
-      //  MeasureMode:  Unnormalized_Measure(beta)
-      //  beta with KT_Axes: 2.0
-      //  beta with WTA_KT_Axes: anything greater than 0.0 (particularly good for 1.0)
-      //  beta with OnePass_KT_Axes or OnePass_WTA_KT_Axes:  between 1.0 and 3.0
-      //
-      ///////
-      
-      
-      cout << "-------------------------------------------------------------------------------------" << endl;
-      cout << "N-subjettiness with Unnormalized Measure (in GeV)" << endl;
-      cout << "beta = 1.0:  One-pass Winner-Take-All kT Axes" << endl;
-      cout << "beta = 2.0:  One-pass E-Scheme kT Axes" << endl;
-      cout << "-------------------------------------------------------------------------------------" << endl;
-      
-      // Now loop through all options
-      cout << setprecision(6) << right << fixed;
-      
-      cout << "-------------------------------------------------------------------------------------" << endl;
-      cout << setw(15) << "beta"
-         << setw(14) << "tau1"
-         << setw(14) << "tau2"
-         << setw(14) << "tau3"
-         << setw(14) << "tau2/tau1"
-         << setw(14) << "tau3/tau2"
-         << endl;
-      
-      // Define Nsubjettiness functions for beta = 1.0 using one-pass WTA KT axes
-      double beta = 1.0;
-      Nsubjettiness         nSub1_beta1(1,   OnePass_WTA_KT_Axes(), UnnormalizedMeasure(beta));
-      Nsubjettiness         nSub2_beta1(2,   OnePass_WTA_KT_Axes(), UnnormalizedMeasure(beta));
-      Nsubjettiness         nSub3_beta1(3,   OnePass_WTA_KT_Axes(), UnnormalizedMeasure(beta));
-      NsubjettinessRatio   nSub21_beta1(2,1, OnePass_WTA_KT_Axes(), UnnormalizedMeasure(beta));
-      NsubjettinessRatio   nSub32_beta1(3,2, OnePass_WTA_KT_Axes(), UnnormalizedMeasure(beta));
+       
+       // run SoftDrop
+      double z_cut = 0.10;
+      double beta_sd  = 0.0;
+      contrib::SoftDrop sd(beta_sd, z_cut);
+       
+      PseudoJet sd_jet = sd(this_jet);
+    
+      // run Nsub
+      double beta_nsub = 1.0;
+      NsubjettinessRatio nSub21_beta1(2,1, OnePass_WTA_KT_Axes(), UnnormalizedMeasure(beta_nsub));
       
       // calculate Nsubjettiness values (beta = 1.0)
-      double  tau1_beta1 =  nSub1_beta1(this_jet);
-      double  tau2_beta1 =  nSub2_beta1(this_jet);
-      double  tau3_beta1 =  nSub3_beta1(this_jet);
-      double tau21_beta1 = nSub21_beta1(this_jet);
-      double tau32_beta1 = nSub32_beta1(this_jet);
-      
-      // Output results (beta = 1.0)
-      cout << setw(15) << 1.0
-         << setw(14) << tau1_beta1
-         << setw(14) << tau2_beta1
-         << setw(14) << tau3_beta1
-         << setw(14) << tau21_beta1
-         << setw(14) << tau32_beta1
-         << endl;
+      double tau21_beta1 = nSub21_beta1(sd_jet);
        
-        
-      outfile << setw(14) << tau1_beta1
-         << setw(14) << tau2_beta1
-         << setw(14) << tau3_beta1
-         << setw(14) << tau21_beta1
-         << setw(14) << tau32_beta1
+       // now loop through all options
+      outfile << setprecision(16) << right << fixed;
+
+      // Output: pt eta phi M tau21
+      outfile << setw(30) << sd_jet.perp()
+         << setw(30) << sd_jet.eta()
+         << setw(30) << sd_jet.phi_std()
+         << setw(30) << sd_jet.m()
+         << setw(30) << tau21_beta1
          << endl;
-      
-      
-      
+
    }
+
   
 }

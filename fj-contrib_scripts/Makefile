@@ -15,10 +15,10 @@ check_script = ../utils/check.sh
 #------------------------------------------------------------------------
 # things that are specific to this contrib
 NAME=Nsubjettiness
-SRCS=Nsubjettiness.cc Njettiness.cc NjettinessPlugin.cc XConePlugin.cc MeasureDefinition.cc ExtraRecombiners.cc AxesDefinition.cc TauComponents.cc
+SRCS=Nsubjettiness.cc Njettiness.cc NjettinessPlugin.cc XConePlugin.cc MeasureDefinition.cc ExtraRecombiners.cc AxesDefinition.cc TauComponents.cc SoftDrop.cc RecursiveSymmetryCutBase.cc Recluster.cc
 EXAMPLES=example_basic_usage example_advanced_usage example_v1p0p3 calc_observables
 EXAMPLES2=example_advanced_usage_ee
-INSTALLED_HEADERS=Nsubjettiness.hh Njettiness.hh NjettinessPlugin.hh XConePlugin.hh MeasureDefinition.hh ExtraRecombiners.hh AxesDefinition.hh TauComponents.hh
+INSTALLED_HEADERS=Nsubjettiness.hh Njettiness.hh NjettinessPlugin.hh XConePlugin.hh MeasureDefinition.hh ExtraRecombiners.hh AxesDefinition.hh TauComponents.hh SoftDrop.hh RecursiveSymmetryCutBase.hh Recluster.hh
 #------------------------------------------------------------------------
 
 CXXFLAGS+= $(shell $(FASTJETCONFIG) --cxxflags)
@@ -120,4 +120,5 @@ example_v1p0p3.o: ExtraRecombiners.hh NjettinessPlugin.hh
 calc_observables.o: Nsubjettiness.hh Njettiness.hh MeasureDefinition.hh
 calc_observables.o: TauComponents.hh AxesDefinition.hh
 calc_observables.o: ExtraRecombiners.hh NjettinessPlugin.hh
-calc_observables.o: XConePlugin.hh
+calc_observables.o: SoftDrop.hh RecursiveSymmetryCutBase.hh Recluster.hh
+
