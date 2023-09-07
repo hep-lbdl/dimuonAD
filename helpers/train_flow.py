@@ -85,7 +85,6 @@ def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, f
                 val_loss_to_beat = mean_val_loss
                 # save the model
                 model_path = f"{checkpoint_path}_best_model.pt"
-                print(model_path)
                 torch.save(flow, model_path)
                 best_epoch = epoch
 
