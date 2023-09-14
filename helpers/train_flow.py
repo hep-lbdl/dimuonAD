@@ -47,16 +47,19 @@ def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, f
     
  
     for epoch in tqdm(range(n_epochs)):
+        
           
         losses_batch_per_e = []     
         for batch_ndx, data in enumerate(train_data):
             data = data.to(device)
             feats = data[:,:-1].float()
             cont = torch.reshape(data[:,-1], (-1, 1)).float()
-            loss = -flow.log_prob(inputs=feats, context = cont).mean()  
+            optimizer.zero_grad()     
+            loss = -flow.log_prob(inputs=feats, context = cont).nanmean()  
             losses_batch_per_e.append(loss.detach().cpu().numpy())
-            optimizer.zero_grad()       
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(flow.parameters(), 5)
+
             optimizer.step()  
             
         if cos_anneal_sched:
@@ -64,7 +67,10 @@ def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, f
             
         # store the loss
         epochs.append(epoch)
-        losses.append(np.mean(losses_batch_per_e))
+        mean_loss = np.nanmean(losses_batch_per_e)
+        losses.append(mean_loss)
+        
+        
         
         with torch.no_grad():
 
@@ -77,7 +83,7 @@ def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, f
                 val_losses_batch_per_e.append(val_loss.detach().cpu().numpy())
 
             # store the loss
-            mean_val_loss = np.mean(val_losses_batch_per_e)
+            mean_val_loss = np.nanmean(val_losses_batch_per_e)
             losses_val.append(mean_val_loss)
 
             # see if the model has the best val loss
