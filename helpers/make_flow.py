@@ -9,7 +9,7 @@ from nflows.transforms.permutations import ReversePermutation
 from nflows.transforms.lu import LULinear
 
 
-def assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features, num_blocks, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 3, tails = "linear", dropout = 0.05):
+def assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features, num_blocks, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 3.5, tails = "linear", dropout = 0.05):
     
     transforms = []
     

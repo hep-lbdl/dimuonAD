@@ -58,8 +58,6 @@ def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, f
             loss = -flow.log_prob(inputs=feats, context = cont).nanmean()  
             losses_batch_per_e.append(loss.detach().cpu().numpy())
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(flow.parameters(), 5)
-
             optimizer.step()  
             
         if cos_anneal_sched:
