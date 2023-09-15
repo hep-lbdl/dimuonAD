@@ -4,9 +4,11 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 
 
-def hist_all_features(codes_to_plot, data_dict, kwargs_dict, feature_labels, feature_bins, image_path=None):
+def hist_all_features(codes_to_plot, data_dict, kwargs_dict, feature_bins, image_path=None):
     
-
+    # these feature labels will almost certainly not change
+    feature_labels = ["jet $p_T$", "jet $\eta$", "jet $\phi$", "jet $M$", "jet $\\tau_{21}$","$\mu\mu$ $p_T$", "$\mu\mu$ $\eta$", "$\mu\mu$ $\phi$", "$\mu\mu$ $M$"]
+    
     if image_path:
         p = PdfPages(f"{image_path}.pdf")
 
