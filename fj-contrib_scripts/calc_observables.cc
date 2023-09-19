@@ -25,10 +25,6 @@ using namespace std;
 using namespace fastjet;
 using namespace fastjet::contrib;
 
-// data
-string input_file_path = "/global/u1/r/rmastand/dimuonAD/data_pre_fj/hadrons_only_od.dat";
-string output_file_path = "/global/u1/r/rmastand/dimuonAD/data_post_fj/jet_obs_od.dat";
-
 // sim
 //string input_file_path = "/global/u1/r/rmastand/dimuonAD/data_pre_fj/hadrons_only_sim_zmm_forcms_1k-mz90.1-mw80.4_8000030.dat";
 //string output_file_path = "/global/u1/r/rmastand/dimuonAD/data_post_fj/jet_obs_sim_zmm_forcms_1k-mz90.1-mw80.4_8000030.dat";
@@ -38,7 +34,17 @@ vector<vector<PseudoJet>> read_event(string infile_path);
 void analyze(const vector<PseudoJet> & input_particles, ofstream& outfile);
 
 //----------------------------------------------------------------------
-int main(){
+int main(int argc, char *argv[]){
+    
+    string start = argv[1];
+    string stop = argv[2];
+    
+    // data
+    string input_file_path = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/data_pre_fj/hadrons_only_"+start+"_"+stop+"_od.dat";
+    string output_file_path = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/data_post_fj/jet_obs_"+start+"_"+stop+"_od.dat";
+
+    cout << "Reading in input file " << input_file_path << "..." << endl;
+    cout << "Outputting to " << output_file_path << "." << endl;
 
     // Read in events
     vector<vector<PseudoJet>> all_events = read_event(input_file_path);
