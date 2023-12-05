@@ -7,14 +7,15 @@ from sklearn.model_selection import train_test_split, KFold
 from sklearn.metrics import roc_auc_score, roc_curve
 
 
-def discriminate_datasets_kfold(results_dir, train_samp_1, train_samp_2, weights_samp_1, weights_samp_2, test_samp_1, test_samp_2, n_features, hyperparameters_dict, device, early_stop = True, visualize = True, seed = 2515, k_folds = 5):
+def discriminate_datasets_kfold(results_dir, train_samp_1, train_samp_2, weights_samp_1, weights_samp_2, test_samp_1, test_samp_2, n_features, hyperparameters_dict, device, early_stop = True, visualize = True, seed = 2515, k_folds = 5, verbose = True):
     
     n_epochs = hyperparameters_dict["n_epochs"]
     batch_size = hyperparameters_dict["batch_size"]
     lr = hyperparameters_dict["lr"]
     
     if seed is not None:
-        print(f"Using seed {seed}...")
+        if verbose:
+            print(f"Using seed {seed}...")
         torch.manual_seed(seed)
         np.random.seed(seed)
     
@@ -33,8 +34,9 @@ def discriminate_datasets_kfold(results_dir, train_samp_1, train_samp_2, weights
     X_test = np.concatenate((test_samp_1, test_samp_2))
     y_test = np.concatenate((torch.zeros((test_samp_1.shape[0], 1)), torch.ones((test_samp_2.shape[0],1))))
     
-    print("Train data, labels shape:", X_train.shape, y_train.shape)
-    print("Test data, labels  shape:", X_test.shape, y_test.shape)
+    if verbose:
+        print("Train data, labels shape:", X_train.shape, y_train.shape)
+        print("Test data, labels  shape:", X_test.shape, y_test.shape)
     
     # send to device
     X_train = np_to_torch(X_train, device)
@@ -50,8 +52,9 @@ def discriminate_datasets_kfold(results_dir, train_samp_1, train_samp_2, weights
     for fold, (train_ids, val_ids) in enumerate(kfold.split(X_train)):     
     
         # Print
-        print(f'FOLD {fold}')
-        print('--------------------------------')
+        if verbose:
+            print(f'FOLD {fold}')
+            print('--------------------------------')
 
         X_train_fold = X_train[train_ids]
         y_train_fold = y_train[train_ids]
@@ -158,7 +161,8 @@ def discriminate_datasets_kfold(results_dir, train_samp_1, train_samp_2, weights
     # load in the model / fold with the best val loss 
     best_model_index = np.argmin(fold_best_val_losses)
     best_model_path = f"{results_dir}/.bc_fold{best_model_index}.pt"
-    print(f"Loading in best model for {best_model_path}, val loss {np.min(fold_best_val_losses)} from fold {best_model_index}")
+    if verbose:
+        print(f"Loading in best model for {best_model_path}, val loss {np.min(fold_best_val_losses)} from fold {best_model_index}")
     
     dense_net_eval = torch.load(best_model_path)
     dense_net_eval.eval()
@@ -178,11 +182,11 @@ def discriminate_datasets_kfold(results_dir, train_samp_1, train_samp_2, weights
         ax.set_ylabel("TPR")
         ax.set_title("ROC: " + str(auc))
         
-    np.save(f"{results_dir}/fpr", fpr)
-    np.save(f"{results_dir}/tpr", tpr)
+        np.save(f"{results_dir}/fpr", fpr)
+        np.save(f"{results_dir}/tpr", tpr)
         
     if auc < 0.5:
         auc = 1.0 - auc
     
-    return auc, outputs
+    return auc, fpr, tpr, outputs
 
