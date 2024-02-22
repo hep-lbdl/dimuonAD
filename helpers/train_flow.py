@@ -8,7 +8,7 @@ from tqdm import tqdm
 from helpers.utils import EarlyStopping
 
 
-def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, SB1_val_dataset, SB2_train_dataset, SB2_val_dataset, flow_training_dir, early_stop = True, seed = 2515):
+def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, SB1_val_dataset, SB2_train_dataset, SB2_val_dataset, flow_training_dir, early_stop = True, seed = 2515, verbose = True):
     
     n_epochs = hyperparameters_dict["n_epochs"]
     lr = hyperparameters_dict["lr"]
@@ -112,6 +112,9 @@ def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, S
         if early_stop:
             if early_stopping.early_stop:
                 break
+                
+        if verbose:
+            tqdm.tqdm.write(f"Epoch {epoch}: train loss {mean_loss}, val loss {mean_val_loss}")
                 
     print("Done training!")
     
