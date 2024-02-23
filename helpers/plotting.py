@@ -73,13 +73,12 @@ feature_bins = {
                 12: np.linspace(20, 120, n_bins), # dimuon M
       }
 
-scaled_feature_bins = [np.linspace(-4, 4, n_bins) for i in range(13)]
 
 """
 FUNCTIONS
 """
 
-def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled_features = False, image_path=None):
+def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled_features=False, plot_bound=3, image_path=None, yscale_log=False):
     
     """
     subset: True if the feature set is a true subset of the provided data. I.e. the data contains all the features, but you only want to plot a few
@@ -89,7 +88,8 @@ def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled
         subset = True
     else:
         subset = False
-    
+        
+    scaled_feature_bins = [np.linspace(-plot_bound, plot_bound, n_bins) for i in range(13)]   
         
     if image_path:
         p = PdfPages(f"{image_path}.pdf")
@@ -107,6 +107,10 @@ def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled
                 plt.hist(data_dict[code][:,plotting_index], bins = scaled_feature_bins[feat], **kwargs_dict[code])
             else:
                 plt.hist(data_dict[code][:,plotting_index], bins = feature_bins[feat], **kwargs_dict[code])
+                
+        if yscale_log:
+            plt.yscale("log")
+            
         plt.xlabel(feature_labels[feat])
         plt.legend()
         plt.ylabel("Density")

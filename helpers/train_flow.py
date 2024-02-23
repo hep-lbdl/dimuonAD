@@ -4,11 +4,15 @@ import torch
 from torch import optim
 
 from tqdm import tqdm
+from livelossplot import PlotLosses
+from livelossplot.outputs import MatplotlibPlot
+
+
 
 from helpers.utils import EarlyStopping
 
 
-def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, SB1_val_dataset, SB2_train_dataset, SB2_val_dataset, flow_training_dir, early_stop = True, seed = 2515, verbose = True):
+def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, SB1_val_dataset, SB2_train_dataset, SB2_val_dataset, flow_training_dir, early_stop=True, early_stop_patience=5, seed=2515):
     
     n_epochs = hyperparameters_dict["n_epochs"]
     lr = hyperparameters_dict["lr"]
@@ -29,6 +33,10 @@ def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, S
     torch.manual_seed(seed)
     np.random.seed(seed)
     
+    # live loss plotting
+    groups = {'loss': ['loss', 'val_loss']}
+    plotlosses = PlotLosses(groups = groups)
+    
     epochs = []
     losses, losses_val = [], []
     
@@ -36,7 +44,7 @@ def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, S
     print()
         
     if early_stop:
-        early_stopping = EarlyStopping(patience = 10)
+        early_stopping = EarlyStopping(patience = early_stop_patience)
         
     # save the best model
     val_loss_to_beat = 1e10
@@ -62,6 +70,8 @@ def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, S
     val_data = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, num_workers = 8, sampler = sampler_val)
     
     for epoch in tqdm(range(n_epochs)):
+        
+        logs = {}
           
         losses_batch_per_e = []     
         for batch_ndx, data in enumerate(train_data):
@@ -83,7 +93,6 @@ def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, S
         losses.append(mean_loss)
         
         
-        
         with torch.no_grad():
 
             val_losses_batch_per_e = []
@@ -97,7 +106,7 @@ def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, S
             # store the loss
             mean_val_loss = np.nanmean(val_losses_batch_per_e)
             losses_val.append(mean_val_loss)
-
+            
             # see if the model has the best val loss
             if mean_val_loss < val_loss_to_beat:
                 val_loss_to_beat = mean_val_loss
@@ -113,8 +122,11 @@ def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, S
             if early_stopping.early_stop:
                 break
                 
-        if verbose:
-            tqdm.tqdm.write(f"Epoch {epoch}: train loss {mean_loss}, val loss {mean_val_loss}")
+        plotlosses.update({
+                'loss': mean_loss,
+                'val_loss': mean_val_loss  
+            })
+        plotlosses.send()
                 
     print("Done training!")
     

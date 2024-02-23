@@ -13,7 +13,7 @@ from nflows.transforms.lu import LULinear
 from helpers.dense import dense_net
 
 
-def assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features, num_blocks, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 3.5, tails = "linear", dropout = 0.05):
+def assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features, num_blocks, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 4.5, tails = "linear", dropout = 0.05):
     
     transforms = []
     
@@ -29,7 +29,7 @@ def assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features,
             
     return transforms
 
-def assemble_coupling_transforms(num_features, num_layers, num_hidden_features, num_hidden_layers, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 3.5, tails = "linear"):
+def assemble_coupling_transforms(num_features, num_layers, num_hidden_features, num_hidden_layers, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 4.5, tails = "linear"):
     
     # first make the mask
     n_mask = int(np.ceil(num_features / 2))
