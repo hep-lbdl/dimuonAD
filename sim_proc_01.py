@@ -122,9 +122,9 @@ while current_chunk_start < args.stop_read:
 
             # get the muons
             # construct the muon 4-vector
-            mu_1 = vector.obj(pt = loc_tower["pt_"][hardest_muon_id], eta = loc_tower["eta_"][hardest_muon_id], phi = loc_tower["phi_"][hardest_muon_id], M = muon_mass)
-            mu_2 = vector.obj(pt = loc_tower["pt_"][hardest_amuon_id], eta = loc_tower["eta_"][hardest_amuon_id], phi = loc_tower["phi_"][hardest_amuon_id], M = muon_mass)
-            dimu_system = mu_1 + mu_2
+            mu = vector.obj(pt = loc_tower["pt_"][hardest_muon_id], eta = loc_tower["eta_"][hardest_muon_id], phi = loc_tower["phi_"][hardest_muon_id], M = muon_mass)
+            amu = vector.obj(pt = loc_tower["pt_"][hardest_amuon_id], eta = loc_tower["eta_"][hardest_amuon_id], phi = loc_tower["phi_"][hardest_amuon_id], M = muon_mass)
+            dimu_system = mu + amu
 
             ofile_muons.write(f"{dimu_system.pt} {dimu_system.eta} {dimu_system.phi} {dimu_system.M}\n")
 
@@ -139,14 +139,14 @@ while current_chunk_start < args.stop_read:
                     ofile_hadrons.write(f"{particle_vector.px} {particle_vector.py} {particle_vector.pz} {particle_vector.E}\n")
                     
                     # calculate the isolation contribution to the hardest (a)muon
-                    delta_R_mu = mu_1.deltaR(particle_vector)
-                    delta_R_amu = mu_2.deltaR(particle_vector)
+                    delta_R_mu = mu.deltaR(particle_vector)
+                    delta_R_amu = amu.deltaR(particle_vector)
                     
                     for R in delta_R_isos:
                         if delta_R_mu <= R:
-                            isolations_mu[R] += (particle_vector.pt)/(mu_1.pt)
+                            isolations_mu[R] += (particle_vector.pt)/(mu.pt)
                         if delta_R_amu <= R:
-                            isolations_amu[R] += (particle_vector.pt)/(mu_2.pt)
+                            isolations_amu[R] += (particle_vector.pt)/(amu.pt)
                             
             iso_muons_line = ""
             for R in delta_R_isos:
