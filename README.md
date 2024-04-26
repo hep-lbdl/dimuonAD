@@ -4,6 +4,6 @@
 
 2. Install this repo (standalone version): https://github.com/cms-opendata-analyses/nanoAOD-tools/. if installed, run `source standalone/env_standalone.sh`
 
-3. Skim for the valid luminosity runs. 
+3. Skim for the valid luminosity runs. In the `skim_helpers` folder, run: `python run_skim.py -i 2` with `i` being the number of root files to process (takes a long time).
 
-In the `NanoAODTools` repository, run: `python run_skim.py -i 2` with `i` being the number of root files to process (takes a long time).
+4. Analyze with the notebook `process_nanoAOD.ipynb'
