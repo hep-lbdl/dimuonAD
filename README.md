@@ -6,4 +6,7 @@
 
 3. Skim for the valid luminosity runs. In the `skim_helpers` folder, run: `python run_skim.py -i 2` with `i` being the number of root files to process (takes a long time).
 
-4. Analyze with the notebook `process_nanoAOD.ipynb'
+4. Analyze with the notebook `process_nanoAOD.ipynb`
+
+
+(Without skimming: run `pull_root.py`, then `process_nanoAOD_old.ipynb`. It should be a lot faster!)
