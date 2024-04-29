@@ -12,3 +12,4 @@ keep FatJet_mass
 keep FatJet_nConstituents
 keep FatJet_tau1
 keep FatJet_tau2
+nPFCands
