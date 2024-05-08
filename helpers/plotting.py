@@ -34,44 +34,64 @@ kwargs_dict_bands = {
 kwargs_dict_dtype = {
                 "od":  {"density": True, "histtype": "step", "color":"blue", "label": "OD"},
                
-              "cmssim":  {"density": True,  "histtype": "step", "color":"red", "label": "CMS SIM"},
+              "SM_SIM":  {"density": True,  "histtype": "step", "color":"red", "label": "CMS SIM"},
+            "cmssim":  {"density": True,  "histtype": "step", "color":"red", "label": "CMS SIM"},
+    
+     "s_inj_data":  {"density": True,  "histtype": "step", "color":"red", "label": "s_inj_data"},
+
+             "BSM_XYY":  {"density": True,  "histtype": "step", "color":"green", "label": "BSM_XYY"},
+    "wp_wzpythia_forcms_charge-mz50.0-mw40.0-mwp1000_full":  {"density": True,  "histtype": "step", "color":"green", "label": "BSM_XYY"},
+
+             "BSM_HAA":  {"density": True,  "histtype": "step", "color":"orange", "label": "BSM_HAA"},
               }
 
 
 
 feature_labels = {
-                  0: "jet $p_T$",
-                  1: "jet $\eta$",
-                  2: "jet $\phi$",
-                  3: "jet $M$",
-                  4: "jet $\\tau_{21}$",
-                  5: "$\mu$ iso $R$ = 0.3",
-                  6: "$\mu$ iso $R$ = 0.5",
-                  7: "$\overline{\mu}$ iso $R$ = 0.3",
-                  8: "$\overline{\mu}$ iso $R$ = 0.5",
-                  9: "$\mu\mu$ $p_T$",
-                  10: "$\mu\mu$ $\eta$",
-                  11: "$\mu\mu$ $\phi$",
-                  12: "$\mu\mu$ $M$",
+                  "muon_pt": "$\mu$ $p_T$",
+                  "amuon_pt": "$\overline{\mu}$ $p_T$",
+                  "muon_eta": "$\mu$ $\eta$",
+                  "amuon_eta": "$\overline{\mu}$ $\eta$",
+                  "muon_iso03": "$\mu$ iso R03",
+                  "amuon_iso03": "$\overline{\mu}$ iso R03",
+                  "muon_iso04": "$\mu$ iso R04",
+                  "amuon_iso04": "$\overline{\mu}$ iso R04",
+                  "dijet_pt": "Dijet $p_T$",
+                  "dijet_eta": "Dijet $\eta$",
+                  "dijet_mass": "Dijet $M$",
+                  "jet0_btag": "Hardest jet Jet_btagDeepB",
+                  "jet1_btag": "Second jet Jet_btagDeepB",
+                  "higgs_pt": "$h$ $p_T$",
+                  "higgs_eta": "$h$ $\eta$",
+                  "higgs_mass": "$h$ $M$",
+                  "dimu_pt": "Dimu $p_T$",
+                  "dimu_eta": "Dimu $\eta$",
+                  "dimu_mass": "Dimu $M$",
         }
 
 n_bins = 60
-
 feature_bins = {
-                0: np.linspace(0, 300, n_bins), # jet pt
-                1: np.linspace(-6, 6, n_bins), # jet eta
-                2: np.linspace(-3.2, 3.2, n_bins), # jet phi
-                3: np.linspace(20, 120, n_bins), # jet M
-                4: np.linspace(0, 1, n_bins), # jet tau21
-                5: np.linspace(0, 2.5, n_bins), # mu R = 0.3
-                6: np.linspace(0, 2.5, n_bins), # mu R = 0.5
-                7: np.linspace(0, 2.5, n_bins), # amu R = 0.3
-                8: np.linspace(0, 2.5, n_bins), # amu R = 0.5
-                9: np.linspace(0, 800, n_bins), # dimuon pt
-                10: np.linspace(-6, 6, n_bins), # dimuon eta
-                11: np.linspace(-3.2, 3.2, n_bins), # dimuon phi
-                12: np.linspace(20, 120, n_bins), # dimuon M
+                "muon_pt": np.linspace(0, 120, n_bins), 
+                "amuon_pt": np.linspace(0, 120, n_bins), 
+                "muon_eta": np.linspace(-3, 3, n_bins), 
+                "amuon_eta": np.linspace(-3, 3, n_bins), 
+                "muon_iso03": np.linspace(0, 1, n_bins),
+                "amuon_iso03": np.linspace(0, 1, n_bins),
+                "muon_iso04": np.linspace(0, 1, n_bins),
+                "amuon_iso04":np.linspace(0, 1, n_bins),
+                "dijet_pt": np.linspace(0, 300, n_bins), 
+                "dijet_eta": np.linspace(-6, 6, n_bins), 
+                "dijet_mass": np.linspace(0, 300, n_bins), 
+                "jet0_btag": np.linspace(0, 1, n_bins),
+                "jet1_btag": np.linspace(0, 1, n_bins), 
+                "higgs_pt": np.linspace(0, 300, n_bins), 
+                "higgs_eta": np.linspace(-6, 6, n_bins), 
+                "higgs_mass": np.linspace(0, 300, n_bins),
+                "dimu_pt": np.linspace(0, 300, n_bins), 
+                "dimu_eta": np.linspace(-6, 6, n_bins), 
+                "dimu_mass": np.linspace(0, 120, n_bins),
       }
+
 
 
 """
@@ -114,6 +134,7 @@ def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled
         plt.xlabel(feature_labels[feat])
         plt.legend()
         plt.ylabel("Density")
+        plt.tight_layout()
         if image_path:
             fig.savefig(p, format='pdf') 
         plt.show()
