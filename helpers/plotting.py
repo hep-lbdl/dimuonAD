@@ -100,16 +100,8 @@ FUNCTIONS
 
 def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled_features=False, plot_bound=3, image_path=None, yscale_log=False):
     
-    """
-    subset: True if the feature set is a true subset of the provided data. I.e. the data contains all the features, but you only want to plot a few
-            False if the dataset contains all of the features to plot
-    """
-    if data_dict[codes_to_plot[0]].shape[-1] != len(feature_set):
-        subset = True
-    else:
-        subset = False
         
-    scaled_feature_bins = [np.linspace(-plot_bound, plot_bound, n_bins) for i in range(13)]   
+    scaled_feature_bins = [np.linspace(-plot_bound, plot_bound, n_bins) for i in range(len(feature_set))]   
         
     if image_path:
         p = PdfPages(f"{image_path}.pdf")
@@ -117,16 +109,12 @@ def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled
     for i, feat in enumerate(feature_set):
         fig = plt.figure(figsize = (5, 3))
         
-        if subset:
-            plotting_index = feat
-        else:
-            plotting_index = i
         
         for code in codes_to_plot:
             if scaled_features:
-                plt.hist(data_dict[code][:,plotting_index], bins = scaled_feature_bins[feat], **kwargs_dict[code])
+                plt.hist(data_dict[code][feat], bins = scaled_feature_bins[i], **kwargs_dict[code])
             else:
-                plt.hist(data_dict[code][:,plotting_index], bins = feature_bins[feat], **kwargs_dict[code])
+                plt.hist(data_dict[code][feat], bins = feature_bins[feat], **kwargs_dict[code])
                 
         if yscale_log:
             plt.yscale("log")
