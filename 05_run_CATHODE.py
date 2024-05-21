@@ -4,6 +4,14 @@ import pickle
 
 import os
 import torch
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-id", "--flow_id")
+parser.add_argument("-f", "--features")
+parser.add_argument("-pid", "--project_id")
+
+args = parser.parse_args()
 
 
 from numba import cuda 
@@ -34,22 +42,33 @@ print( "Using device: " + str( device ), flush=True)
 LOAD IN DATA
 """
 
-bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
-data_dict = {}
 
-feature_set = [6, 7, 8]
+bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
+
+
+feature_set = [f for f in args.features.split(" ")]
+print(f"Using feature set {feature_set}")
+
 num_features = len(feature_set) - 1 # context doesn't count
 
-for b in bands:
 
-    data_dict[b] = np.load(f"/global/homes/r/rmastand/dimuonAD/processed_data/s_inj_{b}.npy")[:,feature_set]
+with open(f"/global/homes/r/rmastand/dimuonAD/processed_data/{args.project_id}_train_band_data", "rb") as ifile:
+    proc_dict_s_inj = pickle.load(ifile)
+    
+data_dict = {}
+
+for b in bands:
+    
+    num_events_band = proc_dict_s_inj[b]["s_inj_data"]["dimu_mass"].shape[0]
+    
+    data_dict[b] = np.empty((num_events_band, num_features+1))
+    for i, feat in enumerate(feature_set):
+        data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"][feat].reshape(-1,)
     print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
 
-
+    
 data_dict["SB"] =  np.vstack((data_dict["SBL"], data_dict["SBH"]))
 data_dict["IB"] =  np.vstack((data_dict["IBL"], data_dict["IBH"]))
-
-
 
 # train val test split
 from sklearn.model_selection import train_test_split
@@ -80,7 +99,7 @@ hyperparameters_dict = {"n_epochs":100,
 
 
 #flow_training_id = f"Masked_PRQ_AR_{num_layers}layers_{num_hidden_features}hidden_{num_blocks}blocks_{seed}seed"
-flow_training_id = "feats_678"
+flow_training_id = f"{args.project_id}_{args.flow_id}"
 
 flow_training_dir = os.path.join("models", f"{flow_training_id}/")
 os.makedirs(flow_training_dir, exist_ok=True)
@@ -90,6 +109,13 @@ test_flow = make_masked_AR_flow(num_features, num_layers, num_hidden_features, n
 
 pytorch_total_params = sum(p.numel() for p in test_flow.parameters() if p.requires_grad)
 print(f"Numb. trainable params: {pytorch_total_params}")
+
+
+
+with open(f"models/{flow_training_id}/configs.txt", "w") as param_file:
+    param_file.write(f"feature_set = {feature_set}\n")
+    param_file.write(f"project_id = {args.project_id}\n")
+    param_file.write(f"flow_training_id = {flow_training_id}")
 
 """
 TRAIN THE FLOW
