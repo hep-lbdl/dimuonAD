@@ -13,8 +13,8 @@ parser.add_argument("-stop", "--stop", help="increase output verbosity")
 
 args = parser.parse_args()
 
-path_to_root_input= "/pscratch/sd/r/rmastand/dimuonAD/skimmed_root_2016_30555/"
-path_to_output = f"/pscratch/sd/r/rmastand/dimuonAD/post_root_sim/skimmed_data_2016H_30555"
+path_to_root_input= "/global/cfs/cdirs/m3246/rmastand/dimuonAD/skimmed_root_2016H_30555/"
+path_to_output = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/skimmed_data_2016H_30555/"
 
 
 paths_to_root_file_list = ["/global/homes/r/rmastand/dimuonAD/file_sources/CMS_Run2016H_DoubleMuon_NANOAOD_UL2016_MiniAODv2_NanoAODv9-v1_2510000_file_index.txt"]
@@ -40,7 +40,7 @@ for i in range(int(args.start), int(args.stop)):
     events = loc_root_file["Events;1"]
 
     # only store the muons for now
-    muon_vars = ["Muon_pt", "Muon_eta", "Muon_phi", "Muon_charge", "Muon_pfRelIso03_all", "Muon_pfRelIso04_all"]
+    muon_vars = ["Muon_pt", "Muon_eta", "Muon_phi", "Muon_charge", "Muon_pfRelIso03_all", "Muon_pfRelIso04_all", "Muon_tightId"]
     electron_vars = ["Electron_pt", "Electron_eta", "Electron_phi", "Electron_charge"]
     jet_vars = ["Jet_pt", "Jet_eta", "Jet_phi", "Jet_mass", "Jet_nConstituents", "Jet_btagCSVV2", "Jet_btagDeepB", "Jet_btagDeepFlavB", "MET_pt", "MET_sumEt"]
     
