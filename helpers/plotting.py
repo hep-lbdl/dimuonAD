@@ -32,7 +32,9 @@ kwargs_dict_bands = {
 }
 
 kwargs_dict_dtype = {
-                "od":  {"density": True, "histtype": "step", "color":"blue", "label": "OD"},
+                "DATA_nojet":  {"density": True, "histtype": "step", "color":"blue", "label": "DATA_nojet"},
+      "DATA_jet":  {"density": True, "histtype": "step", "color":"blue", "label": "DATA_jet"},
+    "DATA":  {"density": True, "histtype": "step", "color":"blue", "label": "DATA"},
                
               "SM_SIM":  {"density": True,  "histtype": "step", "color":"red", "label": "CMS SIM"},
             "cmssim":  {"density": True,  "histtype": "step", "color":"red", "label": "CMS SIM"},
@@ -50,8 +52,18 @@ kwargs_dict_dtype = {
 feature_labels = {
                   "muon_pt": "$\mu$ $p_T$",
                   "amuon_pt": "$\overline{\mu}$ $p_T$",
+                  "mu0_pt": "$\mu_0$ $p_T$",
+                  "mu1_pt": "$\mu_1$ $p_T$",
                   "muon_eta": "$\mu$ $\eta$",
                   "amuon_eta": "$\overline{\mu}$ $\eta$",
+                  "mu0_eta": "$\mu_0$ $\eta$",
+                  "mu1_eta": "$\mu_1$ $\eta$",
+                  "mu0_phi": "$\mu_0$ $\phi$",
+                  "mu1_phi": "$\mu_1$ $\phi$",
+                  "mu0_iso03": "$\mu_0$ isoR03",
+                  "mu1_iso03": "$\mu_1$ isoR03",
+                  "mu0_iso04": "$\mu_0$ isoR04",
+                  "mu1_iso04": "$\mu_1$ isoR04",
                   "muon_iso03": "$\mu$ iso R03",
                   "amuon_iso03": "$\overline{\mu}$ iso R03",
                   "muon_iso04": "$\mu$ iso R04",
@@ -59,43 +71,69 @@ feature_labels = {
                   "dijet_pt": "Dijet $p_T$",
                   "dijet_eta": "Dijet $\eta$",
                   "dijet_mass": "Dijet $M$",
-                  "jet_pt": "Jet $p_T$",
-                  "jet_eta": "Jet $\eta$",
-                  "jet_mass": "Jet $M$",
+                  "hardest_jet_pt": "Jet $p_T$",
+                  "hardest_jet_eta": "Jet $\eta$",
+                  "hardest_jet_phi": "Jet $\phi$",
+                  "hardest_jet_mass": "Jet $M$",
                   "jet0_btag": "Hardest jet Jet_btagDeepB",
+                  "hardest_jet_btag": "Hardest jet Jet_btagDeepB",
                   "jet1_btag": "Second jet Jet_btagDeepB",
                   "higgs_pt": "$h$ $p_T$",
                   "higgs_eta": "$h$ $\eta$",
                   "higgs_mass": "$h$ $M$",
                   "dimu_pt": "Dimu $p_T$",
                   "dimu_eta": "Dimu $\eta$",
+                  "dimu_phi": "Dimu $\phi$",
                   "dimu_mass": "Dimu $M$",
+                  "n_electrons": "Num. electrons",
+                  "n_muons": "Num. muons",
+                  "n_jets": "Num. Jets",
+                  "mumu_deltaR": "$\mu\mu$ $\Delta R$",
+                  "mumu_deltapT": "$\mu\mu$ $\Delta p_T$",
+                  "dimujet_deltaR": "$\mu\mu$ Jet $\Delta R$",
+    
         }
+
 
 n_bins = 60
 feature_bins = {
                 "muon_pt": np.linspace(0, 120, n_bins), 
                 "amuon_pt": np.linspace(0, 120, n_bins), 
+                "mu0_pt": np.linspace(0, 120, n_bins), 
+                "mu1_pt":np.linspace(0, 120, n_bins), 
                 "muon_eta": np.linspace(-3, 3, n_bins), 
                 "amuon_eta": np.linspace(-3, 3, n_bins), 
-                "muon_iso03": np.linspace(0, 1, n_bins),
-                "amuon_iso03": np.linspace(0, 1, n_bins),
-                "muon_iso04": np.linspace(0, 1, n_bins),
-                "amuon_iso04":np.linspace(0, 1, n_bins),
+                "mu0_eta": np.linspace(-3, 3, n_bins), 
+                "mu1_eta":np.linspace(-3, 3, n_bins), 
+                "mu0_phi":np.linspace(-3.2, 3.2, n_bins), 
+                "mu1_phi":np.linspace(-3.2, 3.2, n_bins), 
+                "mu0_iso03": np.linspace(0, 1, n_bins),
+                "mu1_iso03": np.linspace(0, 1, n_bins),
+                "mu0_iso04": np.linspace(0, 1, n_bins),
+                "mu1_iso04":np.linspace(0, 1, n_bins),
                 "dijet_pt": np.linspace(0, 300, n_bins), 
                 "dijet_eta": np.linspace(-6, 6, n_bins), 
                 "dijet_mass": np.linspace(0, 100, n_bins), 
-                "jet_pt": np.linspace(0, 300, n_bins), 
-                "jet_eta": np.linspace(-6, 6, n_bins), 
-                "jet_mass": np.linspace(0, 300, n_bins), 
+                "hardest_jet_pt": np.linspace(0, 300, n_bins), 
+                "hardest_jet_eta": np.linspace(-6, 6, n_bins), 
+                "hardest_jet_phi": np.linspace(-3.2, 3.2, n_bins), 
+                "hardest_jet_mass": np.linspace(0, 300, n_bins), 
                 "jet0_btag": np.linspace(0, 1, n_bins),
+                "hardest_jet_btag": np.linspace(0, 1, n_bins),
                 "jet1_btag": np.linspace(0, 1, n_bins), 
                 "higgs_pt": np.linspace(0, 300, n_bins), 
                 "higgs_eta": np.linspace(-6, 6, n_bins), 
                 "higgs_mass": np.linspace(0, 300, n_bins),
                 "dimu_pt": np.linspace(0, 300, n_bins), 
                 "dimu_eta": np.linspace(-6, 6, n_bins), 
+                "dimu_phi":np.linspace(-3.2, 3.2, n_bins), 
                 "dimu_mass": np.linspace(0, 120, n_bins),
+                "n_electrons": np.linspace(0, 10, 11),
+                "n_muons":np.linspace(0, 10, 11),
+                "n_jets":np.linspace(0, 10, 11),
+                "mumu_deltaR":np.linspace(0, 2, n_bins),
+                "mumu_deltapT":np.linspace(0, 100, n_bins),
+                "dimujet_deltaR":np.linspace(0, 2, n_bins),
       }
 
 
@@ -104,7 +142,7 @@ feature_bins = {
 FUNCTIONS
 """
 
-def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled_features=False, plot_bound=3, image_path=None, yscale_log=False):
+def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled_features=False, plot_bound=3, image_path=None, yscale_log=False, nice_labels=True):
     
         
     scaled_feature_bins = [np.linspace(-plot_bound, plot_bound, n_bins) for i in range(len(feature_set))]   
@@ -124,8 +162,9 @@ def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled
                 
         if yscale_log:
             plt.yscale("log")
-            
-        plt.xlabel(feature_labels[feat])
+        
+        if nice_labels:
+            plt.xlabel(feature_labels[feat])
         plt.legend()
         plt.ylabel("Density")
         plt.tight_layout()

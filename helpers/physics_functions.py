@@ -1,5 +1,7 @@
 import numpy as np
 
+from scipy.optimize import curve_fit
+
 
 muon_mass = 0.1056583755 # GeV
 
@@ -30,3 +32,72 @@ def assemble_m_inv(a_M, a_pt, a_eta, a_phi, b_M, b_pt, b_eta, b_phi):
     
 
     return mother_M, mother_pt, mother_eta, mother_phi
+
+
+def calculate_deltaR(phi_0, phi_1, eta_0, eta_1):
+    
+    delta_phi = np.abs(phi_0 - phi_1)
+    # adjust to be in the range(-pi, pi)
+    delta_phi = np.where(delta_phi > np.pi, 2*np.pi - delta_phi, delta_phi)
+    delta_R = np.sqrt(delta_phi**2 + (eta_0 - eta_1)**2)
+    
+    return delta_R
+
+
+"""
+STATS AND CURVE FITTING
+"""
+
+def bkg_fit_cubic(x, a0, a1, a2, a3):
+    return a0 + a1*x + a2*x**2 + a3*x**3
+
+def bkg_fit_quintic(x, a0, a1, a2, a3, a4, a5):
+    return a0 + a1*x + a2*x**2 + a3*x**3 + a4*x**4 + a5*x**5
+
+
+def calculate_chi2(y_fit, y_true):
+    return np.sum((y_fit - y_true)**2/y_true)
+                 
+def curve_fit_m_inv(masses, fit_function, left_bound, right_bound, SR_left, SR_right, width, p0, remove_right_edge = True):
+        
+        # get left SB data
+        loc_bkg_left = masses[masses < SR_left]
+        if remove_right_edge:
+            plot_bins_left = np.arange(left_bound+width, SR_left, width)
+        else:
+            plot_bins_left = np.arange(left_bound, SR_left+width, width)
+        plot_centers_left = 0.5*(plot_bins_left[1:] + plot_bins_left[:-1])
+        y_vals_left, _ = np.histogram(loc_bkg_left, bins = plot_bins_left, density = False)
+
+        # get right SB data
+        loc_bkg_right = masses[masses > SR_right]
+        if remove_right_edge:
+            plot_bins_right = np.arange(SR_right+width, right_bound, width)
+        else:
+            plot_bins_right = np.arange(SR_right, right_bound+width, width)
+        plot_centers_right = 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])
+        y_vals_right, _ = np.histogram(loc_bkg_right, bins = plot_bins_right, density = False)
+
+        # concatenate the SB data
+        y_vals = np.concatenate((y_vals_left, y_vals_right))
+        plot_centers = np.concatenate((plot_centers_left, plot_centers_right))
+
+        # fit the SB data
+        popt, pcov = curve_fit(fit_function, plot_centers, y_vals, p0)
+
+        # get chi2 in the SB
+        chi2 = calculate_chi2(fit_function(plot_centers, *popt), y_vals)
+        
+        return popt, chi2, len(y_vals)
+    
+    
+def calc_significance(masses, fit_function, left_bound, right_bound, SR_left, SR_right, width, popt):
+
+    x_SR = np.arange(SR_left, SR_right + width, width)
+    x_SR_center = 0.5*(x_SR[1:] + x_SR[:-1])
+    num_B_expected_in_SR = sum(fit_function(x_SR_center, *popt))
+    num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
+
+    num_S_expected_in_SR = num_total_in_SR - num_B_expected_in_SR
+    
+    return num_S_expected_in_SR, num_B_expected_in_SR
