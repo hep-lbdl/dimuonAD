@@ -58,23 +58,25 @@ def bkg_fit_quintic(x, a0, a1, a2, a3, a4, a5):
 def calculate_chi2(y_fit, y_true):
     return np.sum((y_fit - y_true)**2/y_true)
                  
-def curve_fit_m_inv(masses, fit_function, left_bound, right_bound, SR_left, SR_right, width, p0, remove_right_edge = True):
+def curve_fit_m_inv(masses, fit_function, left_bound, right_bound, SR_left, SR_right, width, p0, remove_edge = True):
         
         # get left SB data
         loc_bkg_left = masses[masses < SR_left]
-        if remove_right_edge:
-            plot_bins_left = np.arange(left_bound+width, SR_left, width)
-        else:
-            plot_bins_left = np.arange(left_bound, SR_left+width, width)
+
+        plot_bins_left = np.arange(SR_left, left_bound-width,  -width)[::-1]
+        if remove_edge:
+            plot_bins_left = plot_bins_left[1:]
+    
         plot_centers_left = 0.5*(plot_bins_left[1:] + plot_bins_left[:-1])
         y_vals_left, _ = np.histogram(loc_bkg_left, bins = plot_bins_left, density = False)
 
         # get right SB data
         loc_bkg_right = masses[masses > SR_right]
-        if remove_right_edge:
-            plot_bins_right = np.arange(SR_right+width, right_bound, width)
-        else:
-            plot_bins_right = np.arange(SR_right, right_bound+width, width)
+        
+        plot_bins_right = np.arange(SR_right, right_bound+width, width)
+        if remove_edge:
+            plot_bins_right = plot_bins_right[:-1]
+       
         plot_centers_right = 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])
         y_vals_right, _ = np.histogram(loc_bkg_right, bins = plot_bins_right, density = False)
 
@@ -88,13 +90,12 @@ def curve_fit_m_inv(masses, fit_function, left_bound, right_bound, SR_left, SR_r
         # get chi2 in the SB
         chi2 = calculate_chi2(fit_function(plot_centers, *popt), y_vals)
         
-        return popt, chi2, len(y_vals)
+        return popt, chi2, len(y_vals), plot_bins_left, plot_bins_right
     
     
-def calc_significance(masses, fit_function, left_bound, right_bound, SR_left, SR_right, width, popt):
+def calc_significance(masses, fit_function, plot_bins_SR, SR_left, SR_right, popt):
 
-    x_SR = np.arange(SR_left, SR_right + width, width)
-    x_SR_center = 0.5*(x_SR[1:] + x_SR[:-1])
+    x_SR_center = 0.5*(plot_bins_SR[1:] + plot_bins_SR[:-1])
     num_B_expected_in_SR = sum(fit_function(x_SR_center, *popt))
     num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
 
