@@ -1,0 +1,24 @@
+eta:
+    SB_left: 0.3
+    SR_left: 0.527
+    SR_right: 0.567
+    SB_right: 0.72
+    
+    
+eta_shifted:
+    SB_left: 0.57
+    SR_left: 0.625
+    SR_right: 0.665
+    SB_right: 0.72
+
+upsilon: 
+    SB_left: 8.1
+    SR_left: 9
+    SR_right: 10.6
+    SB_right: 14
+    
+upsilon_shifted:
+    SB_left: 11.1
+    SR_left: 12
+    SR_right: 13.6
+    SB_right: 17
