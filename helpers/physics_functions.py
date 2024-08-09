@@ -1,4 +1,5 @@
 import numpy as np
+import numdifftools
 
 from scipy.optimize import curve_fit
 
@@ -54,6 +55,40 @@ def bkg_fit_cubic(x, a0, a1, a2, a3):
 def bkg_fit_quintic(x, a0, a1, a2, a3, a4, a5):
     return a0 + a1*x + a2*x**2 + a3*x**3 + a4*x**4 + a5*x**5
 
+# https://github.com/jackhcollins/CWoLa-Hunting/blob/master/code/pvalues_analysis.ipynb
+def bkg_fit_ratio(x,p1,p2,p3):
+        #see the ATLAS diboson resonance search: https://arxiv.org/pdf/1708.04445.pdf.
+        xi = 0.
+        y = x/13000.
+        return p1*(1.-y)**(p2-xi*p3)*y**-p3
+    
+ #The following code is used to get the bin errors by propagating the errors on the fit params
+
+def get_errors_bkg_fit_ratio(popt, pcov, xdata, bkg_fit_type):
+    
+    
+    def bkg_fit_array(parr):
+        
+        if bkg_fit_type == "cubic":
+            a0, a1, a2, a3 = parr
+            return np.array([bkg_fit_cubic(x, a0, a1, a2, a3) for x in xdata])
+        
+        elif bkg_fit_type == "quintic":
+            a0, a1, a2, a3, a4, a5 = parr
+            return np.array([bkg_fit_quintic(x, a0, a1, a2, a3, a4, a5) for x in xdata])
+        
+        if bkg_fit_type == "ratio":
+            p1, p2, p3 = parr
+            return np.array([bkg_fit_ratio(x, p1, p2, p3) for x in xdata])
+
+    jac = numdifftools.core.Jacobian(bkg_fit_array)
+    x_cov = np.dot(np.dot(jac(popt),pcov),jac(popt).T)
+    #For plot, take systematic error band as the diagonal of the covariance matrix
+    y_unc=np.sqrt([row[i] for i, row in enumerate(x_cov)])
+    
+    return y_unc
+
+
 
 def calculate_chi2(y_fit, y_true):
     return np.sum((y_fit - y_true)**2/y_true)
@@ -85,12 +120,12 @@ def curve_fit_m_inv(masses, fit_function, left_bound, right_bound, SR_left, SR_r
         plot_centers = np.concatenate((plot_centers_left, plot_centers_right))
 
         # fit the SB data
-        popt, pcov = curve_fit(fit_function, plot_centers, y_vals, p0)
+        popt, pcov = curve_fit(fit_function, plot_centers, y_vals, p0, maxfev=10000)
 
         # get chi2 in the SB
         chi2 = calculate_chi2(fit_function(plot_centers, *popt), y_vals)
         
-        return popt, chi2, len(y_vals), plot_bins_left, plot_bins_right
+        return popt, pcov, chi2, len(y_vals), plot_bins_left, plot_bins_right
     
     
 def calc_significance(masses, fit_function, plot_bins_SR, SR_left, SR_right, popt):
@@ -102,3 +137,4 @@ def calc_significance(masses, fit_function, plot_bins_SR, SR_left, SR_right, pop
     num_S_expected_in_SR = num_total_in_SR - num_B_expected_in_SR
     
     return num_S_expected_in_SR, num_B_expected_in_SR
+
