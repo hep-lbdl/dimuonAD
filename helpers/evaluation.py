@@ -6,7 +6,6 @@ from scipy.stats import wasserstein_distance
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import roc_curve, roc_auc_score
 
-from helpers.train_BC import *
 
 
 def sample_from_flow(model_path, device, context, num_features):
