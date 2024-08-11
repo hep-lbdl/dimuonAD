@@ -7,7 +7,7 @@ import torch
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-id", "--flow_id")
+parser.add_argument("-fid", "--flow_id")
 parser.add_argument("-f", "--features")
 parser.add_argument("-pid", "--project_id")
 
@@ -18,8 +18,6 @@ from numba import cuda
 
 from helpers.make_flow import *
 from helpers.train_flow import *
-from helpers.make_BC import *
-from helpers.train_BC import *
 from helpers.plotting import *
 from helpers.evaluation import *
 
@@ -43,7 +41,7 @@ LOAD IN DATA
 """
 
 
-bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
+bands = ["SBL", "SR", "SBH"]
 
 
 feature_set = [f for f in args.features.split(" ")]
@@ -61,6 +59,7 @@ for b in bands:
     
     num_events_band = proc_dict_s_inj[b]["s_inj_data"]["dimu_mass"].shape[0]
     
+    
     data_dict[b] = np.empty((num_events_band, num_features+1))
     for i, feat in enumerate(feature_set):
         data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"][feat].reshape(-1,)
@@ -68,7 +67,7 @@ for b in bands:
 
     
 data_dict["SB"] =  np.vstack((data_dict["SBL"], data_dict["SBH"]))
-data_dict["IB"] =  np.vstack((data_dict["IBL"], data_dict["IBH"]))
+#data_dict["IB"] =  np.vstack((data_dict["IBL"], data_dict["IBH"]))
 
 # train val test split
 from sklearn.model_selection import train_test_split
@@ -88,13 +87,16 @@ print(f"SBH val data has shape {SBH_data_val.shape}.")
 CREATE THE FLOW
 """
 
+
 num_layers = 2
 num_hidden_features = 16
 num_blocks = 4
-early_stop_patience = 10
+early_stop_patience = 20
+
+
 hyperparameters_dict = {"n_epochs":100,
                           "batch_size": 128,
-                          "lr": 0.001,
+                          "lr": 0.00025,
                           "weight_decay": 0.00}
 
 
@@ -147,11 +149,15 @@ data_dict["SBL_samples"] = sample_from_flow(checkpoint_path, device, data_dict["
 data_dict["SBH_samples"] = sample_from_flow(checkpoint_path, device, data_dict["SBH"][:,-1], num_features)
 data_dict["SB_samples"] =  np.vstack((data_dict["SBL_samples"], data_dict["SBH_samples"]))
 
+"""
 data_dict["IBL_samples"] = sample_from_flow(checkpoint_path, device, data_dict["IBL"][:,-1], num_features)
 data_dict["IBH_samples"] = sample_from_flow(checkpoint_path, device, data_dict["IBH"][:,-1], num_features)
 data_dict["IB_samples"] =  np.vstack((data_dict["IBL_samples"], data_dict["IBH_samples"]))
-
+"""
 data_dict["SR_samples"] =  sample_from_flow(checkpoint_path, device, data_dict["SR"][:,-1], num_features)
+# generate more samples to determine score cutoff at fixed FPR
+data_dict["SR_samples_validation"] =  sample_from_flow(checkpoint_path, device, data_dict["SR"][:,-1], num_features)
+
 
 
 with open(f"models/{flow_training_id}/flow_samples", "wb") as ofile:
