@@ -92,41 +92,73 @@ def get_errors_bkg_fit_ratio(popt, pcov, xdata, bkg_fit_type):
 
 def calculate_chi2(y_fit, y_true):
     return np.sum((y_fit - y_true)**2/y_true)
+
+
+
+def get_bins(SR_left, SR_right, SB_left, SB_right, remove_edge):
+    
+
+    plot_bins_SR = np.linspace(SR_left, SR_right, 6)
+    plot_centers_SR = 0.5*(plot_bins_SR[1:] + plot_bins_SR[:-1])
+    width = plot_bins_SR[1] - plot_bins_SR[0]
+    
+    plot_bins_left = np.arange(SR_left, SB_left-width,  -width)[::-1]
+    if remove_edge:
+        plot_bins_left = plot_bins_left[1:]
+    plot_centers_left = 0.5*(plot_bins_left[1:] + plot_bins_left[:-1])
+    
+    plot_bins_right = np.arange(SR_right, SB_right+width, width)
+    if remove_edge:
+        plot_bins_right = plot_bins_right[:-1]
+    plot_centers_right = 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])
+    
+    plot_centers_all = np.concatenate((plot_centers_left, plot_centers_right))
+    plot_centers_SB = np.concatenate([0.5*(plot_bins_left[1:] + plot_bins_left[:-1]), 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])])
+    plot_bins_all = np.concatenate([plot_bins_left, plot_bins_SR, plot_bins_right])
+    
+    
+    return plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB
                  
-def curve_fit_m_inv(masses, fit_function, left_bound, right_bound, SR_left, SR_right, width, p0, remove_edge = True):
-        
-        # get left SB data
-        loc_bkg_left = masses[masses < SR_left]
-
-        plot_bins_left = np.arange(SR_left, left_bound-width,  -width)[::-1]
-        if remove_edge:
-            plot_bins_left = plot_bins_left[1:]
     
-        plot_centers_left = 0.5*(plot_bins_left[1:] + plot_bins_left[:-1])
-        y_vals_left, _ = np.histogram(loc_bkg_left, bins = plot_bins_left, density = False)
+def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers, SBL_rescale=None, SBH_rescale=None):
+    
 
-        # get right SB data
-        loc_bkg_right = masses[masses > SR_right]
+    if fit_type == "cubic":
+        p0  = [5000, -20000, 30000, -10000]
+        fit_function = bkg_fit_cubic
+        n_dof_fit = 4
+
+    elif fit_type == "quintic":
+        p0  = [5000, -20000, 30000, -10000, 0, 0]
+        fit_function = bkg_fit_quintic
+        n_dof_fit = 6
+
+    elif fit_type == "ratio":
+        p0  = [1000,1000,0.1]
+        fit_function = bkg_fit_ratio
+        n_dof_fit = 3
         
-        plot_bins_right = np.arange(SR_right, right_bound+width, width)
-        if remove_edge:
-            plot_bins_right = plot_bins_right[:-1]
-       
-        plot_centers_right = 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])
-        y_vals_right, _ = np.histogram(loc_bkg_right, bins = plot_bins_right, density = False)
+    # get left SB data
+    loc_bkg_left = masses[masses < SR_left]
+    y_vals_left, _ = np.histogram(loc_bkg_left, bins = plot_bins_left, density = False)
 
-        # concatenate the SB data
+    # get right SB data
+    loc_bkg_right = masses[masses > SR_right]
+    y_vals_right, _ = np.histogram(loc_bkg_right, bins = plot_bins_right, density = False)
+
+    # concatenate the SB data
+    if SBL_rescale is not None:
+        y_vals = np.concatenate((SBL_rescale*y_vals_left, SBH_rescale*y_vals_right))
+    else: 
         y_vals = np.concatenate((y_vals_left, y_vals_right))
-        plot_centers = np.concatenate((plot_centers_left, plot_centers_right))
 
-        # fit the SB data
-        popt, pcov = curve_fit(fit_function, plot_centers, y_vals, p0, maxfev=10000)
+    # fit the SB data
+    popt, pcov = curve_fit(fit_function, plot_centers, y_vals, p0, maxfev=10000)
 
-        # get chi2 in the SB
-        chi2 = calculate_chi2(fit_function(plot_centers, *popt), y_vals)
-        
-        return popt, pcov, chi2, len(y_vals), plot_bins_left, plot_bins_right
-    
+    # get chi2 in the SB
+    chi2 = calculate_chi2(fit_function(plot_centers, *popt), y_vals)
+
+    return popt, pcov, chi2, y_vals, len(y_vals) - n_dof_fit
     
 def calc_significance(masses, fit_function, plot_bins_SR, SR_left, SR_right, popt):
 

@@ -142,7 +142,7 @@ feature_bins = {
 FUNCTIONS
 """
 
-def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled_features=False, plot_bound=3, image_path=None, yscale_log=False, nice_labels=True):
+def hist_all_features_dict(data_dicts, data_labels, feature_set, kwargs_dict, scaled_features=False, plot_bound=3, image_path=None, yscale_log=False, nice_labels=True):
     
         
     scaled_feature_bins = [np.linspace(-plot_bound, plot_bound, n_bins) for i in range(len(feature_set))]   
@@ -153,12 +153,12 @@ def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled
     for i, feat in enumerate(feature_set):
         fig = plt.figure(figsize = (5, 3))
         
-        
-        for code in codes_to_plot:
+
+        for j, data_dict in enumerate(data_dicts):
             if scaled_features:
-                plt.hist(data_dict[code][feat], bins = scaled_feature_bins[i], **kwargs_dict[code])
+                plt.hist(data_dict[feat], bins = scaled_feature_bins[i], **kwargs_dict[data_labels[j]])
             else:
-                plt.hist(data_dict[code][feat], bins = feature_bins[feat], **kwargs_dict[code])
+                plt.hist(data_dict[feat], bins = feature_bins[feat], **kwargs_dict[data_labels[j]])
                 
         if yscale_log:
             plt.yscale("log")
@@ -174,3 +174,26 @@ def hist_all_features(codes_to_plot, data_dict, feature_set, kwargs_dict, scaled
         
     if image_path: 
         p.close()
+        
+        
+        
+def hist_all_features_array(samples, labels, feature_set, plot_bound=3, yscale_log=False):
+    scaled_feature_bins = [np.linspace(-plot_bound, plot_bound, 40) for i in range(len(feature_set))]   
+    
+    n_features = len(feature_set)
+    fig, ax = plt.subplots(1, n_features, figsize = (3*n_features, 3))
+        
+
+    for i, feat in enumerate(feature_set):
+        for j, samp in enumerate(samples):
+            ax[i].hist(samp[:,i], bins = scaled_feature_bins[i], histtype = "step", density = True, label = labels[j])
+         
+        if yscale_log:
+            ax[i].set_yscale("log")
+        ax[i].set_xlabel(feat)
+        ax[i].set_yticks([])
+    plt.legend(loc = (0, 1))
+    ax[0].set_ylabel("Density")
+    plt.subplots_adjust(wspace=0)
+    plt.show()
+  

@@ -134,15 +134,14 @@ def train_flow_asymm_SB(flow, hyperparameters_dict, device, SB1_train_dataset, S
     return epochs, losses, losses_val, best_epoch
  
     
-def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, flow_training_dir, early_stop = True, seed = 2515):
+def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, flow_training_dir, flow_training_id, early_stop = True, seed = 2515, early_stop_patience=20):
     
     n_epochs = hyperparameters_dict["n_epochs"]
     lr = hyperparameters_dict["lr"]
     weight_decay = hyperparameters_dict["weight_decay"]
     batch_size = hyperparameters_dict["batch_size"]
     
-    config_string = f"epochs{n_epochs}_lr{lr}_wd{weight_decay}_bs{batch_size}"
-    checkpoint_path = os.path.join(flow_training_dir, f"{config_string}")
+    checkpoint_path = os.path.join(flow_training_dir, flow_training_id)
 
     # send network to device
     flow.to(device)
@@ -162,7 +161,7 @@ def train_flow(flow, hyperparameters_dict, device, train_dataset, val_dataset, f
     print()
         
     if early_stop:
-        early_stopping = EarlyStopping()
+        early_stopping = EarlyStopping(patience = early_stop_patience)
         
     # save the best model
     val_loss_to_beat = 1e10

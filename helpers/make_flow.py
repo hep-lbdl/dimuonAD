@@ -13,23 +13,28 @@ from nflows.transforms.lu import LULinear
 from helpers.dense import dense_net
 
 
-def assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features, num_blocks, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 4.5, tails = "linear", dropout = 0.05):
+def assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features, num_blocks, num_bins=10, spline_type="PRQ", perm_type="Reverse", tail_bound=3, tails="linear", dropout=0, use_batch_norm=True):
     
     transforms = []
     
     for _ in range(num_layers):
         
-        if spline_type == "PiecewiseRationalQuadratic":
-            transforms.append(MaskedPiecewiseRationalQuadraticAutoregressiveTransform(features = num_features, hidden_features = num_hidden_features, num_blocks = num_blocks, tail_bound = tail_bound, context_features = 1, tails = tails, num_bins = num_bins, dropout_probability = dropout))     
+        if spline_type == "PRQ":
+            transforms.append(MaskedPiecewiseRationalQuadraticAutoregressiveTransform(features=num_features, hidden_features=num_hidden_features, num_blocks=num_blocks, tail_bound=tail_bound, context_features=1, tails=tails, num_bins=num_bins, dropout_probability=dropout, use_batch_norm=use_batch_norm))   
+            
+        elif spline_type == "MAF":
+            transforms.append(MaskedAffineAutoregressiveTransform(features=num_features, hidden_features=num_hidden_features, num_blocks=num_blocks, context_features=1, dropout_probability=dropout, use_batch_norm=use_batch_norm))
             
         if perm_type == "Reverse":
-            transforms.append(ReversePermutation(features = num_features)) 
+            transforms.append(ReversePermutation(features=num_features)) 
         else:
-            transforms.append(LULinear(features = num_features)) 
+            transforms.append(LULinear(features=num_features)) 
             
     return transforms
 
-def assemble_coupling_transforms(num_features, num_layers, num_hidden_features, num_hidden_layers, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 4.5, tails = "linear"):
+"""
+
+def assemble_coupling_transforms(num_features, num_layers, num_hidden_features, num_hidden_layers, num_bins = 10, spline_type = "PiecewiseRationalQuadratic", perm_type = "Reverse", tail_bound = 3, tails = "linear"):
     
     # first make the mask
     n_mask = int(np.ceil(num_features / 2))
@@ -53,18 +58,20 @@ def assemble_coupling_transforms(num_features, num_layers, num_hidden_features, 
             transforms.append(LULinear(features = num_features)) 
             
     return transforms
+"""
 
-def make_masked_AR_flow(num_features, num_layers, num_hidden_features, num_blocks):
+
+def make_masked_AR_flow(num_features, num_layers, num_hidden_features, num_blocks, spline_type):
 
     # Define a flow architecture
-    transforms = assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features, num_blocks)
+    transforms = assemble_masked_AR_transforms(num_features, num_layers, num_hidden_features, num_blocks, spline_type=spline_type)
     base_dist = StandardNormal(shape=[num_features])
     
     flow = Flow(CompositeTransform(transforms), base_dist)
     
     return flow
 
-
+"""
 def make_coupling_flow(num_features, num_layers, num_hidden_features, num_hidden_layers):
 
     # Define a flow architecture
@@ -74,3 +81,4 @@ def make_coupling_flow(num_features, num_layers, num_hidden_features, num_hidden
     flow = Flow(CompositeTransform(transforms), base_dist)
     
     return flow
+"""
