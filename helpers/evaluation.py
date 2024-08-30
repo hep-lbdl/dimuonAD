@@ -7,6 +7,7 @@ from scipy.stats import wasserstein_distance
 
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import roc_curve, roc_auc_score
+from helpers.density_estimator import DensityEstimator
 
 
 
@@ -33,7 +34,7 @@ def sample_from_flow(model_path, device, context, num_features):
 def convert_to_latent_space(samples_to_convert, flow_training_dir, training_config_string, device):
 
 
-    checkpoint_path = os.path.join(flow_training_dir, f"{training_config_string}_best_model.pt")
+    checkpoint_path = os.path.join(flow_training_dir, f"flow_best_model.pt")
     flow_best = torch.load(checkpoint_path)
     flow_best.to(device)
 
@@ -49,6 +50,30 @@ def convert_to_latent_space(samples_to_convert, flow_training_dir, training_conf
     return np.hstack([outputs_normal_target.detach().cpu().numpy(), samples_to_convert[:,-1].reshape(-1,1)])
 
 
+
+def convert_to_latent_space_true_cathode(samples_to_convert, num_inputs, flow_training_dir, config_file, device):
+    
+    val_losses = np.load(os.path.join(flow_training_dir, "flow_val_losses.npy"))
+
+    # get epoch of best val loss
+    best_epoch = np.argmin(val_losses) - 1
+    model_path = f"{flow_training_dir}/flow_epoch_{best_epoch}.par"
+
+    eval_model = DensityEstimator(config_file, num_inputs, eval_mode=True, load_path=model_path, device=device, verbose=False,bound=False)
+    
+    
+    context_masses = torch.tensor(samples_to_convert[:,-1].reshape(-1,1)).float().to(device)
+    
+    outputs_normal_target = eval_model.model.forward(torch.tensor(samples_to_convert[:,:-1]).float().to(device), context_masses, mode='direct')[0]
+    return np.hstack([outputs_normal_target.detach().cpu().numpy(), samples_to_convert[:,-1].reshape(-1,1)])
+    
+
+
+
+
+
+
+    
 
 def get_1d_wasserstein_distances(samples_1, samples_2):
     

@@ -120,6 +120,28 @@ def get_bins(SR_left, SR_right, SB_left, SB_right, remove_edge):
     return plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB
                  
     
+def select_top_events_fold(true_masses, scores, score_cutoff, plot_bins_left, plot_bins_right, plot_bins_SR):
+    
+    """
+    true_masses: unpreprocessed masses
+    """
+    # get the events that pass the score threshold
+    pass_scores = scores >= score_cutoff
+
+    # correct for diff efficiency in the SB
+    SBL_counts_passed, _ = np.histogram(true_masses[pass_scores], bins = plot_bins_left)
+    SBL_counts_all, _ = np.histogram(true_masses, bins = plot_bins_left)
+
+    SBH_counts_passed, _ = np.histogram(true_masses[pass_scores], bins = plot_bins_right)
+    SBH_counts_all, _ = np.histogram(true_masses, bins = plot_bins_right)
+
+    SR_counts_passed, _ = np.histogram(true_masses[pass_scores], bins = plot_bins_SR)
+    SR_counts_all, _ = np.histogram(true_masses, bins = plot_bins_SR)
+    
+    return true_masses[pass_scores], SBL_counts_passed/SBL_counts_all, SBH_counts_passed/SBH_counts_all, SR_counts_passed/SR_counts_all
+
+
+    
 def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers, SBL_rescale=None, SBH_rescale=None):
     
 

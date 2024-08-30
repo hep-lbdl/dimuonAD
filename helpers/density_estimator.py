@@ -43,12 +43,13 @@ class DensityEstimator:
                 return object.__new__(subclass)
         raise DensityEstimator.Unknown(f'Unknown model "{name}" requested')
 
-    def __init__(self, filename, eval_mode=False, load_path=None,
+    def __init__(self, filename, num_inputs, eval_mode=False, load_path=None,
                  device=torch.device("cpu"), verbose=False, **kwargs):
         # with open(filename, 'r') as stream:
         #     params = yaml.safe_load(stream)
 
         self.bound = False
+        self.num_inputs = num_inputs
 
         self.build(self.params, eval_mode, load_path, device, verbose)
 
@@ -58,8 +59,9 @@ class DensityEstimator:
         from a yaml config file.
         """
         modules = []
-        for i in range(params['num_blocks']):
-            self.build_block(i, modules, params)
+        for layer in range(params['num_layers']):
+            for i in range(params['num_blocks']):
+                self.build_block(i, modules, params)
 
         if self.bound:
             self.model = fnn.FlowSequentialUniformBase(*modules)
@@ -74,7 +76,7 @@ class DensityEstimator:
                 if hasattr(module, 'bias') and module.bias is not None:
                     module.bias.data.fill_(0)
         # Workaround bug in flow.py
-        self.model.num_inputs = params['num_inputs']
+        self.model.num_inputs = self.num_inputs
 
         self.finalize_build(params, eval_mode, device, verbose, load_path)
 
@@ -119,12 +121,12 @@ class DE_MAF(DensityEstimator):
 
     def build_block(self, i, modules, params):
         modules += [
-            fnn.MADE(params['num_inputs'], params['num_hidden'],
+            fnn.MADE(self.num_inputs, params['num_hidden'],
                      params['num_cond_inputs'],
                      act=params['activation_function'],
                      pre_exp_tanh=params['pre_exp_tanh']),
             ]
         if params['batch_norm']:
-            modules += [fnn.BatchNormFlow(params['num_inputs'],
+            modules += [fnn.BatchNormFlow(self.num_inputs,
                                           momentum=params['batch_norm_momentum'])]
-        modules += [fnn.Reverse(params['num_inputs'])]
+        modules += [fnn.Reverse(self.num_inputs)]

@@ -16,3 +16,12 @@ def inverse_transform(x, preproc_info):
     unscaled_x =  x*preproc_info["std"] + preproc_info["mean"]
     tmp = np.exp(unscaled_x) / (1.0 + np.exp(unscaled_x))
     return tmp*(preproc_info["max"]-preproc_info["min"]) + preproc_info["min"]
+
+
+
+def clean_data(x):
+    
+    remove_nan =  x[~np.isnan(x).any(axis=1)]
+    remove_inf = remove_nan[~np.isinf(remove_nan).any(axis=1)]
+    
+    return remove_inf

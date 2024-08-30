@@ -12,7 +12,7 @@ def train_ANODE(model, optimizer, dataloader_train, dataloader_test, model_file_
                 no_logit=False, data_std=None):
     # ANODE model training function. Records training and valdiation losses and saves the
     #   parameters to file. Works for either inner or outer model.
-    #   no_logit corrects printed and saved loss value for not using logit transformation
+    #   no_logit corrects printed and saved loss value for not using logit transformationminn_nan
 
     # Create model directory if necessary
     if not os.path.exists(savedir):
@@ -25,7 +25,7 @@ def train_ANODE(model, optimizer, dataloader_train, dataloader_test, model_file_
             "Need data_std to correct losses when trained without logit")
 
     train_loss_return = compute_loss_over_batches(model, dataloader_train, device,
-                                                  correct_logit=data_std if no_logit else None)
+                                                 correct_logit=data_std if no_logit else None)
     val_loss_return = compute_loss_over_batches(model, dataloader_test, device,
                                                 correct_logit=data_std if no_logit else None)
     train_loss = train_loss_return[0]
@@ -92,6 +92,10 @@ def train_epoch(model, optimizer, data_loader, device, verbose=True, data_std=No
                 torch.log(data_std*data*(1.-data)).sum(dim=1)).flatten()
             corrected_train_loss_avg.extend(corrected_loss.tolist())
         loss.mean().backward()
+        
+        # clip grad norm
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
+
         optimizer.step()
 
         if verbose:
@@ -136,14 +140,23 @@ def compute_loss_over_batches(model, data_loader, device, correct_logit=None):
         now_loss = 0
         n_nans = 0
         n_highs = 0
-        for batch_idx, batch_data in enumerate(data_loader):
+    
+        for batch_idx, all_data in enumerate(data_loader):
+        
             
-            batch_data = batch_data.to(device)
-            data = batch_data[:,:-1].float()
-            cond_data = torch.reshape(batch_data[:,-1], (-1, 1)).float()
+            all_data = all_data.to(device)
+            data = all_data[:,:-1].float()
+            cond_data = torch.reshape(all_data[:,-1], (-1, 1)).float()
 
 
             loss_vals_raw = model.log_probs(data, cond_data)
+            
+            if sum(torch.isnan(loss_vals_raw)) > 0:
+                print(loss_vals_raw.reshape(-1,))
+                print(torch.isnan(loss_vals_raw).reshape(-1,))
+                print(all_data[torch.isnan(loss_vals_raw).reshape(-1,)])
+         
+   
             
             loss_vals = loss_vals_raw.flatten()
 
