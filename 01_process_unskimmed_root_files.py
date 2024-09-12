@@ -3,8 +3,11 @@ import numpy as np
 import argparse
 import pickle
 import json
+import os
 
-# source: https://opendata.cern.ch/record/44211 for root. 49 files total
+"""
+"Process" simulation, i.e. any files that do not need to be skimmed
+"""
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-start", "--start", help="increase output verbosity")
@@ -13,26 +16,30 @@ parser.add_argument("-code", "--code", help="increase output verbosity")
 
 args = parser.parse_args()
 
-path_to_output = f"/pscratch/sd/r/rmastand/dimuonAD/post_root_sim/{args.code}"
+path_to_output = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/data/{args.code}/"
+
+if not os.path.exists(path_to_output):
+    os.makedirs(path_to_output)
 
 # SM, SIM
+# https://opendata.cern.ch/record/44211, 49 files
 if args.code == "SM_SIM":
     paths_to_root_file_list = ["/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_50000_file_index.txt",
                                "/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_40000_file_index.txt",
                                "/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_2520000_file_index.txt",
                                "/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_2430000_file_index.txt"]
 
-#  SUSYGluGluToHToAA_AToMuMu_AToBB_M-40
+#  USYGluGluToHToAA_AToMuMu_AToBB_M-40
+# https://opendata.cern.ch/record/65045, 11 files
 elif args.code == "BSM_HAA":
     paths_to_root_file_list = ["/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_SUSYGluGluToHToAA_AToMuMu_AToBB_M-40_TuneCP5_13TeV_madgraph_pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_40000_file_index.txt"]
 
 #  ggXToYY_YToMuMu_M22p5
+# https://opendata.cern.ch/record/36434, 2 files
 elif args.code == "BSM_XYY":
     paths_to_root_file_list = ["/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_ggXToYY_YToMuMu_M22p5_JPCZeroPlusPlus_TuneCP5_13TeV-pythia8-JHUGen_NANOAODSIM_106X_mcRun2_asymptotic_v17-v2_40000_file_index.txt", "/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_ggXToYY_YToMuMu_M22p5_JPCZeroPlusPlus_TuneCP5_13TeV-pythia8-JHUGen_NANOAODSIM_106X_mcRun2_asymptotic_v17-v2_2430000_file_index.txt"]
     
-# data
-elif args.code == "DATA":
-    paths_to_root_file_list = ["/global/homes/r/rmastand/dimuonAD/file_sources/CMS_Run2016H_DoubleMuon_NANOAOD_UL2016_MiniAODv2_NanoAODv9-v1_2510000_file_index.txt"]
+
 
 list_of_root_files = []
 for path in paths_to_root_file_list:
@@ -43,7 +50,7 @@ for path in paths_to_root_file_list:
         
 num_jets_to_save = 3
         
-print(len(list_of_root_files))
+print(f"{len(list_of_root_files)} files total to analyze.\n")
         
 for i in range(int(args.start), int(args.stop)):
     
@@ -64,43 +71,11 @@ for i in range(int(args.start), int(args.stop)):
     for jv in jet_vars:
         all_jet_data[jv] = events[jv].array()
 
-    # make filters for the muons, amuons
-    loc_muon_filter = all_muon_data["Muon_charge"] == -1
-    loc_amuon_filter = all_muon_data["Muon_charge"] == 1
-
-    # TODO: Official CMS code restricts to events with exactly 2 muons, which is tighter than this cut
-    loc_num_muon = np.sum(loc_muon_filter, axis = 1)
-    loc_num_amuon = np.sum(loc_amuon_filter, axis = 1)
-
-    loc_event_passes = (loc_num_muon > 0) & (loc_num_amuon > 0)
-
-    # filter the muon data
-    for mv in muon_vars:
-
-        # filter the events
-        loc_data_mu = all_muon_data[mv][loc_muon_filter][loc_event_passes]
-        loc_data_amu = all_muon_data[mv][loc_amuon_filter][loc_event_passes]
-
-        # get data corresponding to the hardest (a)muon
-        filtered_muon_data[mv] = [event[0] for event in loc_data_mu]
-        filtered_amuon_data[mv] = [event[0] for event in loc_data_amu]
-        
-    # filter the jet data
-    for jv in jet_vars:
-
-        # filter the events
-        loc_data_jet = all_jet_data[jv][loc_event_passes]
-
-        # get data corresponding to the hardest (a)muon
-        filtered_jet_data[jv] = [event[:num_jets_to_save] if len(event) > 0 else np.NaN for event in loc_data_jet]
-
     # save out
-    with open(f"{path_to_output}/filtered_mu_{args.code}_{i}", "wb") as output_file:
-        pickle.dump(filtered_muon_data, output_file)
-        
-    with open(f"{path_to_output}/filtered_amu_{args.code}_{i}", "wb") as output_file:
-        pickle.dump(filtered_amuon_data, output_file)
+    with open(f"{path_to_output}/all_mu_{i}", "wb") as output_file:
+        pickle.dump(all_muon_data, output_file)
 
-    with open(f"{path_to_output}/filtered_jet_{args.code}_{i}", "wb") as output_file:
-        pickle.dump(filtered_jet_data, output_file)
-       
+    with open(f"{path_to_output}/all_jet_{i}", "wb") as output_file:
+        pickle.dump(all_jet_data, output_file)
+
+print("All done!")
