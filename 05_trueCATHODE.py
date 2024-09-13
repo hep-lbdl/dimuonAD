@@ -20,6 +20,8 @@ parser.add_argument('--no_logit', action="store_true", default=False,
                     help='Turns off the logit transform.')
 parser.add_argument('--epochs', default=300)
 parser.add_argument('--verbose', default=False)
+parser.add_argument('--use_inner_bands', action="store_true", default=False)
+
 
 batch_size = 256
 
@@ -59,9 +61,15 @@ print( "Using device: " + str( device ), flush=True)
 LOAD IN DATA
 """
 
+use_inner_bands = args.use_inner_bands
 
-bands = ["SBL", "SR", "SBH"]
-working_dir = "/pscratch/sd/r/rmastand/dimuonAD/projects/logit_08_22/"
+if use_inner_bands:
+    bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
+else:
+    bands = ["SBL", "SR", "SBH"]
+    
+working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/BSM_09_13/"
+#working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/logit_08_22/"
 
 feature_set = [f for f in args.features.split(",")]
 print(f"Using feature set {feature_set}")
@@ -78,7 +86,10 @@ for b in bands:
     num_events_band = proc_dict_s_inj[b]["s_inj_data"]["dimu_mass"].shape[0]
     data_dict[b] = np.empty((num_events_band, num_features+1))
     for i, feat in enumerate(feature_set):
-        data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"][feat].reshape(-1,)
+        if feat == "mu_iso04":
+            data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"]["mu0_iso04"].reshape(-1,) + proc_dict_s_inj[b]["s_inj_data"]["mu1_iso04"].reshape(-1,)
+        else:
+            data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"][feat].reshape(-1,)
     print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
 
 print()
@@ -159,12 +170,15 @@ data_dict["SBL_samples"] = get_samples(data_dict["SBL"][:,-1])
 data_dict["SBH_samples"] = get_samples(data_dict["SBH"][:,-1]) 
 data_dict["SB_samples"] =  np.vstack((data_dict["SBL_samples"], data_dict["SBH_samples"]))
 
+if use_inner_bands:
+    data_dict["IBL_samples"] = get_samples(data_dict["IBL"][:,-1]) 
+    data_dict["IBH_samples"] = get_samples(data_dict["IBH"][:,-1]) 
+    data_dict["IB_samples"] =  np.vstack((data_dict["IBL_samples"], data_dict["IBH_samples"]))
+
 
 data_dict["SR_samples"] =  get_samples(data_dict["SR"][:,-1]) 
 # generate more samples to determine score cutoff at fixed FPR
 data_dict["SR_samples_validation"] =  get_samples(data_dict["SR"][:,-1]) 
-# generate samples for flow decorrelation
-data_dict["SR_samples_decorr"] =  get_samples(data_dict["SR"][:,-1]) 
 
 
 
