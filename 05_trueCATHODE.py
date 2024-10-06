@@ -137,10 +137,10 @@ with open(f"{flow_training_dir}/configs.txt", "w") as param_file:
 """
 TRAIN THE FLOW
 """
-"""
+
 train_ANODE(model, optimizer, train_loader, val_loader, "flow",
             args.epochs, savedir=flow_training_dir, device=device, verbose=args.verbose, no_logit=args.no_logit, data_std=None)
-"""
+
 
 # plot losses
 train_losses = np.load(os.path.join(flow_training_dir, "flow_train_losses.npy"))
