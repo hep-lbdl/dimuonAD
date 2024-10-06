@@ -9,7 +9,9 @@ import yaml
 
 from helpers.density_estimator import DensityEstimator
 from helpers.ANODE_training_utils import train_ANODE, plot_ANODE_losses
-    
+from helpers.data_transforms import clean_data
+from helpers.physics_functions import get_bins, curve_fit_m_inv, bkg_fit_cubic
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-fid", "--flow_id")
@@ -30,6 +32,7 @@ args = parser.parse_args()
 print(f"Flow id: {args.flow_id}")
 print(f"Project id: {args.project_id}")
 print(f"Configs: {args.configs}")
+
 
 
 
@@ -68,8 +71,10 @@ if use_inner_bands:
 else:
     bands = ["SBL", "SR", "SBH"]
     
-working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/BSM_09_13/"
-#working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/logit_08_22/"
+if args.use_inner_bands:
+    working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/BSM_09_13/"
+else:
+    working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/logit_08_22/"
 
 feature_set = [f for f in args.features.split(",")]
 print(f"Using feature set {feature_set}")
@@ -86,15 +91,18 @@ for b in bands:
     num_events_band = proc_dict_s_inj[b]["s_inj_data"]["dimu_mass"].shape[0]
     data_dict[b] = np.empty((num_events_band, num_features+1))
     for i, feat in enumerate(feature_set):
-        if feat == "mu_iso04":
-            data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"]["mu0_iso04"].reshape(-1,) + proc_dict_s_inj[b]["s_inj_data"]["mu1_iso04"].reshape(-1,)
-        else:
-            data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"][feat].reshape(-1,)
+        data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"][feat].reshape(-1,)
     print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
 
 print()
-data_dict["SB"] =  np.vstack((data_dict["SBL"], data_dict["SBH"]))
 
+data_dict["SBL"] = clean_data(data_dict["SBL"])
+data_dict["SBH"] = clean_data(data_dict["SBH"])
+
+
+data_dict["SB"] =  np.vstack((data_dict["SBL"], data_dict["SBH"]))
+if use_inner_bands:
+    data_dict["IB"] =  np.vstack((data_dict["IBL"], data_dict["IBH"]))
 
 # train val split
 from sklearn.model_selection import train_test_split
@@ -129,10 +137,10 @@ with open(f"{flow_training_dir}/configs.txt", "w") as param_file:
 """
 TRAIN THE FLOW
 """
-
+"""
 train_ANODE(model, optimizer, train_loader, val_loader, "flow",
             args.epochs, savedir=flow_training_dir, device=device, verbose=args.verbose, no_logit=args.no_logit, data_std=None)
-
+"""
 
 # plot losses
 train_losses = np.load(os.path.join(flow_training_dir, "flow_train_losses.npy"))
@@ -175,11 +183,56 @@ if use_inner_bands:
     data_dict["IBH_samples"] = get_samples(data_dict["IBH"][:,-1]) 
     data_dict["IB_samples"] =  np.vstack((data_dict["IBL_samples"], data_dict["IBH_samples"]))
 
+    
+# more samples for a high stats validation set
+data_dict["SBL_samples_ROC"] =  np.vstack([get_samples(data_dict["SBL"][:,-1]),get_samples(data_dict["SBL"][:,-1]), get_samples(data_dict["SBL"][:,-1]), get_samples(data_dict["SBL"][:,-1])])
+data_dict["SBH_samples_ROC"] =  np.vstack([get_samples(data_dict["SBH"][:,-1]),get_samples(data_dict["SBH"][:,-1]), get_samples(data_dict["SBH"][:,-1]), get_samples(data_dict["SBH"][:,-1])])
 
-data_dict["SR_samples"] =  get_samples(data_dict["SR"][:,-1]) 
+
+# to draw peakless samples from the SR, we need to first do a bkg fit in the SB
+SB_left, SR_left = np.min(data_dict["SBL"][:,-1].reshape(-1)),  np.max(data_dict["SBL"][:,-1].reshape(-1))
+SR_right, SB_right = np.min(data_dict["SBH"][:,-1].reshape(-1)),  np.max(data_dict["SBH"][:,-1].reshape(-1))
+
+masses_to_fit = np.hstack((data_dict["SBL"][:,-1], data_dict["SBH"][:,-1]))
+
+
+plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, True)
+x = np.linspace(SB_left, SB_right, 100) # plot curve fit
+
+# do the curve fit
+popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, "cubic", SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_all)
+
+plt.figure(figsize = (7,5))
+plt.plot(x, bkg_fit_cubic(x, *popt_0), lw = 3, linestyle = "dashed", label = "SB fit")
+plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "SB data")    
+         
+import zfit
+from zfit import z
+
+class CustomPDF(zfit.pdf.ZPDF):
+    _PARAMS = ("a0","a1","a2","a3")  # specify which parameters to take
+
+    def _unnormalized_pdf(self, x):  # implement function
+        data = z.unstack_x(x)
+        return bkg_fit_cubic(data, self.params["a0"],self.params["a1"],self.params["a2"],self.params["a3"])
+
+obs = zfit.Space("mass_inv", limits=(SR_left, SR_right))
+custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3])
+
+mass_samples = custom_pdf.sample(n=data_dict["SR"].shape[0])["mass_inv"].numpy()
+plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
+plt.legend()
+plt.savefig(f"{flow_training_dir}/bkg_fit")
+         
+
+# now actually generate the samples)
+
+
+data_dict["SR_samples"] =  get_samples(mass_samples) 
 # generate more samples to determine score cutoff at fixed FPR
-data_dict["SR_samples_validation"] =  get_samples(data_dict["SR"][:,-1]) 
-
+data_dict["SR_samples_validation"] =  get_samples(mass_samples) 
+# get even more samples for a ROC set
+data_dict["SR_samples_ROC"] =  np.vstack([get_samples(mass_samples), get_samples(mass_samples), get_samples(mass_samples)])
 
 
 with open(f"{flow_training_dir}/flow_samples", "wb") as ofile:
