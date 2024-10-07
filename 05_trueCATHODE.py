@@ -20,7 +20,7 @@ parser.add_argument("-pid", "--project_id")
 parser.add_argument("-c", "--configs")
 parser.add_argument('--no_logit', action="store_true", default=False,
                     help='Turns off the logit transform.')
-parser.add_argument('--epochs', default=300)
+parser.add_argument('--epochs', default=400)
 parser.add_argument('--verbose', default=False)
 parser.add_argument('--use_inner_bands', action="store_true", default=False)
 
@@ -81,20 +81,29 @@ print(f"Using feature set {feature_set}")
 num_features = len(feature_set) - 1 # context doesn't count
 
 
-with open(f"{working_dir}/processed_data/{args.project_id}_train_band_data", "rb") as ifile:
-    proc_dict_s_inj = pickle.load(ifile)
-    
 data_dict = {}
 
+
+"""
+LOAD IN DEDICATED TRAIN DATA FOR FLOW
+"""
+# dataset just for flow training (extra data)
+with open(f"{working_dir}/processed_data/{args.project_id}_train_band_data", "rb") as ifile:
+    proc_dict_s_inj_train = pickle.load(ifile)
+# dataset for the bump hunt only
+with open(f"{working_dir}/processed_data/{args.project_id}_test_band_data", "rb") as ifile:
+    proc_dict_s_inj_test = pickle.load(ifile)
+
 for b in bands:
-    
-    num_events_band = proc_dict_s_inj[b]["s_inj_data"]["dimu_mass"].shape[0]
+    num_events_band = proc_dict_s_inj_train[b]["s_inj_data"]["dimu_mass"].shape[0]+proc_dict_s_inj_test[b]["s_inj_data"]["dimu_mass"].shape[0]
     data_dict[b] = np.empty((num_events_band, num_features+1))
     for i, feat in enumerate(feature_set):
-        data_dict[b][:,i] = proc_dict_s_inj[b]["s_inj_data"][feat].reshape(-1,)
+        data_dict[b][:,i] = np.vstack([proc_dict_s_inj_train[b]["s_inj_data"][feat].reshape(-1,1),proc_dict_s_inj_test[b]["s_inj_data"][feat].reshape(-1,1)]).reshape(-1,)
     print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
-
 print()
+
+
+
 
 data_dict["SBL"] = clean_data(data_dict["SBL"])
 data_dict["SBH"] = clean_data(data_dict["SBH"])
@@ -168,8 +177,10 @@ eval_model = DensityEstimator(path_to_config_file, num_features,
 
 
 def get_samples(masses):
+    
+    with torch.no_grad():
 
-    feats = eval_model.model.sample(num_samples=masses.shape[0], cond_inputs=torch.tensor(masses.reshape(-1,1)).float()).detach().cpu().numpy()
+        feats = eval_model.model.sample(num_samples=masses.shape[0], cond_inputs=torch.tensor(masses.reshape(-1,1)).float()).detach().cpu().numpy()
     
     return np.hstack([feats, masses.reshape(-1,1)])
 
@@ -185,27 +196,32 @@ if use_inner_bands:
 
     
 # more samples for a high stats validation set
-data_dict["SBL_samples_ROC"] =  np.vstack([get_samples(data_dict["SBL"][:,-1]),get_samples(data_dict["SBL"][:,-1]), get_samples(data_dict["SBL"][:,-1]), get_samples(data_dict["SBL"][:,-1])])
-data_dict["SBH_samples_ROC"] =  np.vstack([get_samples(data_dict["SBH"][:,-1]),get_samples(data_dict["SBH"][:,-1]), get_samples(data_dict["SBH"][:,-1]), get_samples(data_dict["SBH"][:,-1])])
+data_dict["SBL_samples_ROC"] =  get_samples(data_dict["SBL"][:,-1]) 
+data_dict["SBH_samples_ROC"] =  get_samples(data_dict["SBH"][:,-1]) 
 
 
 # to draw peakless samples from the SR, we need to first do a bkg fit in the SB
 SB_left, SR_left = np.min(data_dict["SBL"][:,-1].reshape(-1)),  np.max(data_dict["SBL"][:,-1].reshape(-1))
 SR_right, SB_right = np.min(data_dict["SBH"][:,-1].reshape(-1)),  np.max(data_dict["SBH"][:,-1].reshape(-1))
 
+
 masses_to_fit = np.hstack((data_dict["SBL"][:,-1], data_dict["SBH"][:,-1]))
 
 
-plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, True)
+plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
 x = np.linspace(SB_left, SB_right, 100) # plot curve fit
+
 
 # do the curve fit
 popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, "cubic", SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_all)
 
 plt.figure(figsize = (7,5))
 plt.plot(x, bkg_fit_cubic(x, *popt_0), lw = 3, linestyle = "dashed", label = "SB fit")
-plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "SB data")    
-         
+plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "SB data") 
+# estimate number of samples
+n_SR_samples = int(np.sum(bkg_fit_cubic(plot_centers_SR, *popt_0)))
+    
+    
 import zfit
 from zfit import z
 
@@ -219,7 +235,7 @@ class CustomPDF(zfit.pdf.ZPDF):
 obs = zfit.Space("mass_inv", limits=(SR_left, SR_right))
 custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3])
 
-mass_samples = custom_pdf.sample(n=data_dict["SR"].shape[0])["mass_inv"].numpy()
+mass_samples = custom_pdf.sample(n=n_SR_samples)["mass_inv"].numpy()
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
 plt.savefig(f"{flow_training_dir}/bkg_fit")
@@ -232,7 +248,7 @@ data_dict["SR_samples"] =  get_samples(mass_samples)
 # generate more samples to determine score cutoff at fixed FPR
 data_dict["SR_samples_validation"] =  get_samples(mass_samples) 
 # get even more samples for a ROC set
-data_dict["SR_samples_ROC"] =  np.vstack([get_samples(mass_samples), get_samples(mass_samples), get_samples(mass_samples)])
+data_dict["SR_samples_ROC"] =  get_samples(mass_samples) 
 
 
 with open(f"{flow_training_dir}/flow_samples", "wb") as ofile:

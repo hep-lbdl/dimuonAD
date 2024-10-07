@@ -1,24 +1,85 @@
+feature_sets:
+    single_0:
+        - mu0_pt
+        - mu1_pt
+        - mu0_eta
+        - mu1_eta
+    single_1: 
+        - mu0_iso04
+        - mu1_iso04
+    single_2: 
+        - mu0_pt
+        - mu1_pt
+    single_3: 
+        - mu0_ip3d
+        - mu1_ip3d
+        - mu0_jetiso
+        - mu1_jetiso
+    single_4: 
+        - mu0_ip3d
+        - mu1_ip3d
+    single_5: 
+        - mu0_jetiso
+        - mu1_jetiso
+    double_0: 
+        - dimu_pt
+        - dimu_eta
+        - mumu_deltaR
+        - mumu_deltapT
+    double_1: 
+        - dimu_pt
+        - dimu_eta
+    double_2: 
+        - mumu_deltaR
+        - mumu_deltapT
+    mix_0: 
+        - dimu_pt
+        - mu0_iso04
+        - mu1_iso04
+
+
 eta:
     SB_left: 0.3
-    SR_left: 0.527
-    SR_right: 0.567
+    SR_left: 0.525
+    SR_right: 0.569
     SB_right: 0.72
+
+
+upsilon: 
+    SB_left: 7.8
+    SR_left: 9
+    SR_right: 10.6
+    SB_right: 14
     
     
+psi_prime: 
+    SB_left: 3.17
+    SR_left: 3.51
+    SR_right: 3.85
+    SB_right: 5
+    
+psi: 
+    SB_left: 0.82
+    SR_left: 0.95
+    SR_right: 1.05
+    SB_right: 1.5
+    
+rho:
+    SB_left: 0.57
+    SR_left: 0.7
+    SR_right: 0.86
+    SB_right: 0.95
+    
+upsilon_shifted:
+    SB_left: 11
+    SR_left: 12
+    SR_right: 13.6
+    SB_right: 17
+    
+    
+        
 eta_shifted:
     SB_left: 0.57
     SR_left: 0.625
     SR_right: 0.665
     SB_right: 0.72
-
-upsilon: 
-    SB_left: 8.1
-    SR_left: 9
-    SR_right: 10.6
-    SB_right: 14
-    
-upsilon_shifted:
-    SB_left: 11.1
-    SR_left: 12
-    SR_right: 13.6
-    SB_right: 17

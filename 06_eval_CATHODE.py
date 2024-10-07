@@ -33,42 +33,13 @@ with open(f"{working_dir}/processed_data/{project_id}_test_band_data", "rb") as 
 with open(f"{flow_training_dir}/configs.txt", "rb") as infile: 
     configs = infile.readlines()[0].decode("utf-8")
     print(configs)
-    
-    
-feature_sets = {
-    
-    "single_0": ['mu0_pt', 'mu1_pt', 'mu0_eta', 'mu1_eta'] ,
-    "single_1": ['mu0_iso04', 'mu1_iso04'] ,
-    "single_2": ['mu0_pt', 'mu1_pt'] ,
-    "single_3": ['mu0_ip3d', 'mu1_ip3d', 'mu0_jetiso', 'mu1_jetiso'] ,
-    "double_0": ['dimu_pt', 'dimu_eta', 'mumu_deltaR', 'mumu_deltapT'] ,
-    "double_1": ['dimu_pt', 'dimu_eta'] ,
-    "double_2": ['mumu_deltaR', 'mumu_deltapT'] ,
-    "mix_0": ['dimu_pt', 'mu0_iso04', 'mu1_iso04'] ,
-}
 
+import yaml
+with open("workflow.yaml", "r") as file:
+    workflow = yaml.safe_load(file)
 
+feature_sets = workflow["feature_sets"]
 feature_set = feature_sets[args.feature_set]
-    
-# Assemble the test set -- consists of both SB and SR
-
-num_events_test_SBL = test_dict["SBL"]["s_inj_data"]["dimu_mass"].shape[0]
-num_events_test_SBH = test_dict["SBH"]["s_inj_data"]["dimu_mass"].shape[0]
-
-test_events_SBL = np.empty((num_events_test_SBL, len(feature_set)))
-test_events_SBH = np.empty((num_events_test_SBH, len(feature_set)))
-
-
-for i, feat in enumerate(feature_set):
-    test_events_SBL[:,i] = test_dict["SBL"]["s_inj_data"][feat].reshape(-1,)
-    test_events_SBH[:,i] = test_dict["SBH"]["s_inj_data"][feat].reshape(-1,)
-
-    
-
-test_events_SB = np.vstack([test_events_SBL, test_events_SBH ])
-    
-print(f"Total number of test events: {test_events_SBL.shape[0]+test_events_SBH.shape[0]} in SB.")
-
 
 
 n_estimators = 100 # number of boosting stages
@@ -120,6 +91,7 @@ def run_discriminator(data, samples):
         loc_scores =  bst_i.predict_proba(X_val, iteration_range=(0,bst_i.best_iteration))[:,1]
 
         loc_auc = roc_auc_score(Y_val, loc_scores)
+        if loc_auc < 0.5: loc_auc = 1.0 - loc_auc
         #loc_acc = accuracy_score(Y_val, np.round(loc_scores))
 
         auc_list.append(loc_auc)
