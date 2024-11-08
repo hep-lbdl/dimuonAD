@@ -10,6 +10,10 @@ from helpers.data_transforms import clean_data
 parser = argparse.ArgumentParser()
 parser.add_argument("-feat", "--feature_set")
 parser.add_argument("-p", "--particle_type")
+parser.add_argument("-seeds", "--seeds", default="1", help="csv for seeds of flow models to use")
+parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
+parser.add_argument("-run_jet", "--run_jet", action="store_true")
+
 
 args = parser.parse_args()
 
@@ -17,30 +21,49 @@ args = parser.parse_args()
 bands = ["SBL", "SR", "SBH"]
 data_dict = {}
 
-working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/logit_08_22/"
-project_id = f"lowmass_{args.particle_type}_nojet"
+
+working_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/{args.dir_id}/"
+if args.run_jet:
+    project_id = f"lowmass_{args.particle_type}_jet"
+else:
+    project_id = f"lowmass_{args.particle_type}_nojet"
 config_id = "CATHODE_8"
 
 flow_training_dir = os.path.join(f"{working_dir}/models", f"{project_id}/{args.feature_set}/{config_id}")
 
+# load in all the flow models across different seeds
+seeds_list = [int(x) for x in args.seeds.split(",")]
+data_dict = {'SBL':[], 'SBH':[], 'SB':[], 'SBL_samples':[], 'SBH_samples':[], 'SB_samples':[]}
 
-with open(f"{flow_training_dir}/flow_samples", "rb") as infile: 
-    data_dict = pickle.load(infile)
+for seed in seeds_list:
+    path_to_samples = f"{flow_training_dir}/flow_samples_seed{seed}"
+    with open(path_to_samples, "rb") as infile: 
+        loc_data_dict = pickle.load(infile)
+        for key in data_dict.keys():
+            if "samples" in key or seed == 1:
+                data_dict[key].append(loc_data_dict[key])
+            
+for key in data_dict.keys():
+    data_dict[key] = np.vstack(data_dict[key])
+    print(key, data_dict[key].shape)
+
     
-with open(f"{working_dir}/processed_data/{project_id}_test_band_data", "rb") as infile: 
-    test_dict = pickle.load(infile)
+from scipy.stats import ks_2samp
 
-with open(f"{flow_training_dir}/configs.txt", "rb") as infile: 
-    configs = infile.readlines()[0].decode("utf-8")
-    print(configs)
+def get_dist(samp0, samp1):
+    
+    divs = []
+    
+    for i in range(samp0.shape[1]):
+        divs.append(ks_2samp(samp0[:,i], samp1[:,i])[0])
+    return divs
 
-import yaml
-with open("workflow.yaml", "r") as file:
-    workflow = yaml.safe_load(file)
+wds = get_dist(data_dict["SB"], data_dict["SB_samples"])
 
-feature_sets = workflow["feature_sets"]
-feature_set = feature_sets[args.feature_set]
 
+for i, wd in enumerate(wds):
+    print(f"Feature {i} KL div: {wd}")
+print(f"Total distance: {np.mean(wds)}")
 
 n_estimators = 100 # number of boosting stages
 max_depth = 20 # max depth of individual regression estimators; related to complexity
@@ -56,8 +79,11 @@ import xgboost as xgb
 def run_discriminator(data, samples):
 
 
-    SB_data_train, SB_data_test, SB_samples_train, SB_samples_test = train_test_split(data, samples, 
-                                                                                      test_size=0.1, random_state=42)
+    
+    SB_data_train, SB_data_test = train_test_split(data_dict["SB"], test_size=0.1, random_state=42)
+    SB_samples_train, SB_samples_test = train_test_split(data_dict["SB_samples"], test_size=0.1, random_state=42)
+    
+    
     SB_samples_train = clean_data(SB_samples_train)
     SB_samples_test = clean_data(SB_samples_test)
 

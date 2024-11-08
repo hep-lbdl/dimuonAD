@@ -16,13 +16,16 @@ from helpers.physics_functions import get_bins, curve_fit_m_inv, bkg_fit_cubic
 parser = argparse.ArgumentParser()
 parser.add_argument("-fid", "--flow_id")
 parser.add_argument("-f", "--features")
-parser.add_argument("-pid", "--project_id")
+parser.add_argument("-pid", "--project_id", help='ID associated with the dataset')
+parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
 parser.add_argument("-c", "--configs")
+parser.add_argument('-seed', '--seed', default=1)
 parser.add_argument('--no_logit', action="store_true", default=False,
                     help='Turns off the logit transform.')
 parser.add_argument('--epochs', default=400)
 parser.add_argument('--verbose', default=False)
 parser.add_argument('--use_inner_bands', action="store_true", default=False)
+parser.add_argument('--use_extra_data', action="store_true", default=False)
 
 
 batch_size = 256
@@ -43,7 +46,7 @@ from helpers.train_flow import *
 from helpers.plotting import *
 from helpers.evaluation import *
 
-seed = 8
+seed = int(args.seed)
 
 
 # computing
@@ -59,6 +62,8 @@ torch.set_num_threads(2)
 device = torch.device( "cuda" if torch.cuda.is_available() else "cpu")
 print( "Using device: " + str( device ), flush=True)
 
+torch.manual_seed(seed)
+np.random.seed(seed)
 
 """
 LOAD IN DATA
@@ -71,10 +76,8 @@ if use_inner_bands:
 else:
     bands = ["SBL", "SR", "SBH"]
     
-if args.use_inner_bands:
-    working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/BSM_09_13/"
-else:
-    working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/logit_08_22/"
+
+working_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/{args.dir_id}/"
 
 feature_set = [f for f in args.features.split(",")]
 print(f"Using feature set {feature_set}")
@@ -87,23 +90,35 @@ data_dict = {}
 """
 LOAD IN DEDICATED TRAIN DATA FOR FLOW
 """
-# dataset just for flow training (extra data)
-with open(f"{working_dir}/processed_data/{args.project_id}_train_band_data", "rb") as ifile:
-    proc_dict_s_inj_train = pickle.load(ifile)
+
 # dataset for the bump hunt only
 with open(f"{working_dir}/processed_data/{args.project_id}_test_band_data", "rb") as ifile:
     proc_dict_s_inj_test = pickle.load(ifile)
 
-for b in bands:
-    num_events_band = proc_dict_s_inj_train[b]["s_inj_data"]["dimu_mass"].shape[0]+proc_dict_s_inj_test[b]["s_inj_data"]["dimu_mass"].shape[0]
-    data_dict[b] = np.empty((num_events_band, num_features+1))
-    for i, feat in enumerate(feature_set):
-        data_dict[b][:,i] = np.vstack([proc_dict_s_inj_train[b]["s_inj_data"][feat].reshape(-1,1),proc_dict_s_inj_test[b]["s_inj_data"][feat].reshape(-1,1)]).reshape(-1,)
-    print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
+if args.use_extra_data:
+    print("Using supplementary data...")
+    # dataset just for flow training (extra data)
+    with open(f"{working_dir}/processed_data/{args.project_id}_train_band_data", "rb") as ifile:
+        proc_dict_s_inj_train = pickle.load(ifile)
+
+    for b in bands:
+        num_events_band = proc_dict_s_inj_train[b]["s_inj_data"]["dimu_mass"].shape[0]+proc_dict_s_inj_test[b]["s_inj_data"]["dimu_mass"].shape[0]
+        data_dict[b] = np.empty((num_events_band, num_features+1))
+        for i, feat in enumerate(feature_set):
+            data_dict[b][:,i] = np.vstack([proc_dict_s_inj_train[b]["s_inj_data"][feat].reshape(-1,1),proc_dict_s_inj_test[b]["s_inj_data"][feat].reshape(-1,1)]).reshape(-1,)
+        print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
+  
+    
+else:
+    for b in bands:
+        num_events_band = proc_dict_s_inj_test[b]["s_inj_data"]["dimu_mass"].shape[0]
+        data_dict[b] = np.empty((num_events_band, num_features+1))
+        for i, feat in enumerate(feature_set):
+            data_dict[b][:,i] = proc_dict_s_inj_test[b]["s_inj_data"][feat].reshape(-1,1).reshape(-1,)
+        print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
+
+
 print()
-
-
-
 
 data_dict["SBL"] = clean_data(data_dict["SBL"])
 data_dict["SBH"] = clean_data(data_dict["SBH"])
@@ -147,7 +162,7 @@ with open(f"{flow_training_dir}/configs.txt", "w") as param_file:
 TRAIN THE FLOW
 """
 
-train_ANODE(model, optimizer, train_loader, val_loader, "flow",
+train_ANODE(model, optimizer, train_loader, val_loader, f"flow_seed{args.seed}",
             args.epochs, savedir=flow_training_dir, device=device, verbose=args.verbose, no_logit=args.no_logit, data_std=None)
 
 
@@ -155,7 +170,7 @@ train_ANODE(model, optimizer, train_loader, val_loader, "flow",
 train_losses = np.load(os.path.join(flow_training_dir, "flow_train_losses.npy"))
 val_losses = np.load(os.path.join(flow_training_dir, "flow_val_losses.npy"))
 plot_ANODE_losses(train_losses, val_losses, yrange=None,
-savefig=os.path.join(flow_training_dir, "loss_plot"),suppress_show=True)
+savefig=os.path.join(flow_training_dir, f"loss_plot_seed{args.seed}"),suppress_show=True)
 
 
 
@@ -238,7 +253,7 @@ custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[
 mass_samples = custom_pdf.sample(n=n_SR_samples)["mass_inv"].numpy()
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
-plt.savefig(f"{flow_training_dir}/bkg_fit")
+plt.savefig(f"{flow_training_dir}/bkg_fit_seed{args.seed}")
          
 
 # now actually generate the samples)
@@ -251,7 +266,7 @@ data_dict["SR_samples_validation"] =  get_samples(mass_samples)
 data_dict["SR_samples_ROC"] =  get_samples(mass_samples) 
 
 
-with open(f"{flow_training_dir}/flow_samples", "wb") as ofile:
+with open(f"{flow_training_dir}/flow_samples_seed{args.seed}", "wb") as ofile:
     pickle.dump(data_dict, ofile)
     
     
