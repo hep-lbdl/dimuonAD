@@ -150,13 +150,11 @@ def compute_loss_over_batches(model, data_loader, device, correct_logit=None):
 
 
             loss_vals_raw = model.log_probs(data, cond_data)
-            
+
             if sum(torch.isnan(loss_vals_raw)) > 0:
-                print(loss_vals_raw.reshape(-1,))
-                print(torch.isnan(loss_vals_raw).reshape(-1,))
+                #print(loss_vals_raw.reshape(-1,))
                 print(all_data[torch.isnan(loss_vals_raw).reshape(-1,)])
-         
-   
+           
             
             loss_vals = loss_vals_raw.flatten()
 

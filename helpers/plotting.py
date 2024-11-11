@@ -60,6 +60,10 @@ feature_labels = {
                   "mu1_eta": "$\mu_1$ $\eta$",
                   "mu0_phi": "$\mu_0$ $\phi$",
                   "mu1_phi": "$\mu_1$ $\phi$",
+                  "mu0_ip3d": "$\mu_0$ IP3D",
+                  "mu1_ip3d": "$\mu_1$ IP3D",
+                  "mu0_jetiso": "$\mu_0$ jetISO",
+                  "mu1_jetiso": "$\mu_1$ jetISO",
                   "mu0_iso03": "$\mu_0$ isoR03",
                   "mu1_iso03": "$\mu_1$ isoR03",
                   "mu0_iso04": "$\mu_0$ isoR04",
@@ -97,8 +101,10 @@ feature_labels = {
 
 n_bins = 60
 feature_bins = {
-                "muon_pt": np.linspace(0, 120, n_bins), 
-                "amuon_pt": np.linspace(0, 120, n_bins), 
+                "mu0_ip3d": np.linspace(0, 0.25, n_bins), 
+                "mu1_ip3d": np.linspace(0, 0.25, n_bins), 
+                "mu0_jetiso":np.linspace(0, 8, n_bins), 
+                "mu1_jetiso":np.linspace(0, 8, n_bins), 
                 "mu0_pt": np.linspace(0, 120, n_bins), 
                 "mu1_pt":np.linspace(0, 120, n_bins), 
                 "muon_eta": np.linspace(-3, 3, n_bins), 

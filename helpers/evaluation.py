@@ -3,13 +3,25 @@ import torch
 
 import os
 
-from scipy.stats import wasserstein_distance
-
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import roc_curve, roc_auc_score
 from helpers.density_estimator import DensityEstimator
+from scipy.stats import ks_2samp
 
+def get_kl_dist(samp0, samp1):
+    
+    divs = []
+    for i in range(samp0.shape[1]):
+        divs.append(ks_2samp(samp0[:,i], samp1[:,i])[0])
+    return divs
 
+def get_median_percentiles(x_array):
+    
+    x_median = np.median(x_array, axis = 1)
+    x_lower = np.percentile(x_array, 16, axis = 1)
+    x_upper = np.percentile(x_array, 84, axis = 1)
+
+    return x_median, x_lower, x_upper
 
 def sample_from_flow(model_path, device, context, num_features):
     
@@ -30,7 +42,7 @@ def sample_from_flow(model_path, device, context, num_features):
     
     return SB_samples
 
-
+"""
 def convert_to_latent_space(samples_to_convert, flow_training_dir, training_config_string, device):
 
 
@@ -49,7 +61,7 @@ def convert_to_latent_space(samples_to_convert, flow_training_dir, training_conf
     # note that the mass is saved out as well. Necessary for evaluating the test set
     return np.hstack([outputs_normal_target.detach().cpu().numpy(), samples_to_convert[:,-1].reshape(-1,1)])
 
-
+"""
 
 def convert_to_latent_space_true_cathode(samples_to_convert, num_inputs, flow_training_dir, config_file, device):
     
@@ -69,15 +81,21 @@ def convert_to_latent_space_true_cathode(samples_to_convert, num_inputs, flow_tr
     
 
 
-
-
-
-
+def assemble_banded_datasets(data_dict, feature_set, bands):
     
-
-def get_1d_wasserstein_distances(samples_1, samples_2):
+    banded_data = {}
     
-    distances_1d = []
-    for i in range(samples_1.shape[1]):
-        distances_1d.append(wasserstein_distance(samples_1[:,i] , samples_2[:,i]))
-    return distances_1d
+    for b in bands:
+        num_events_band = data_dict[b]["s_inj_data"]["dimu_mass"].shape[0]
+        events_band = np.empty((num_events_band, len(feature_set)))
+        for i, feat in enumerate(feature_set):
+            # default test set
+            events_band[:,i] = data_dict[b]["s_inj_data"][feat].reshape(-1,)
+        banded_data[b] = events_band
+        
+    return banded_data
+
+
+
+
+

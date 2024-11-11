@@ -31,6 +31,26 @@ def get_mask(in_features, out_features, in_flow_features, mask_type=None):
     return (out_degrees.unsqueeze(-1) >= in_degrees.unsqueeze(0)).float()
 
 
+def get_mask_RQS(in_features, out_features, in_flow_features, mask_type=None):
+    """
+    mask_type: input | None | output
+
+    See Figure 1 for a better illustration:
+    https://arxiv.org/pdf/1502.03509.pdf
+    """
+    if mask_type == 'input':
+        in_degrees = torch.arange(in_features)
+    else:
+        in_degrees = torch.arange(in_features)
+
+    if mask_type == 'output':
+        out_degrees = torch.arange(out_features)
+    else:
+        out_degrees = torch.arange(out_features) 
+
+    return (out_degrees.unsqueeze(-1) >= in_degrees.unsqueeze(0)).float()
+
+
 def get_CL_mask(num_inputs, mask_type='binary'):
     """get the mask for a CL block
 
@@ -733,16 +753,16 @@ class MADEwithRQS(nn.Module):
         act_func = activations[act]
         self.num_bins = num_bins
 
-        input_mask = get_mask(
-            num_inputs, num_hidden, num_inputs, mask_type='input')
-        hidden_mask = get_mask(num_hidden, num_hidden, num_inputs)
+        input_mask = torch.tensor(1)#get_mask_RQS(
+            #num_inputs, num_hidden, num_inputs, mask_type='input')
+        hidden_mask = torch.tensor(1)#get_mask_RQS(num_hidden, num_hidden, num_inputs)
         self.bound = bound
         if self.bound:
             self.output_multiplier = (3*num_bins + 1)
         else:
             self.output_multiplier = (3*num_bins - 1)
-        output_mask = get_mask(
-            num_hidden, num_inputs * self.output_multiplier, num_inputs, mask_type='output')
+        output_mask = torch.tensor(1)#get_mask_RQS(
+            #num_hidden, num_inputs * self.output_multiplier, num_inputs, mask_type='output')
 
         self.joiner = nn.MaskedLinear(num_inputs, num_hidden, input_mask,
                                       num_cond_inputs)

@@ -18,7 +18,6 @@ def inverse_transform(x, preproc_info):
     return tmp*(preproc_info["max"]-preproc_info["min"]) + preproc_info["min"]
 
 
-
 def clean_data(x):
     
     remove_nan =  x[~np.isnan(x).any(axis=1)]

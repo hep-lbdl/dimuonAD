@@ -36,34 +36,17 @@ seeds_list = [int(x) for x in args.seeds.split(",")]
 data_dict = {'SBL':[], 'SBH':[], 'SB':[], 'SBL_samples':[], 'SBH_samples':[], 'SB_samples':[]}
 
 for seed in seeds_list:
-    path_to_samples = f"{flow_training_dir}/flow_samples_seed{seed}"
+    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples"
     with open(path_to_samples, "rb") as infile: 
         loc_data_dict = pickle.load(infile)
         for key in data_dict.keys():
             if "samples" in key or seed == 1:
                 data_dict[key].append(loc_data_dict[key])
-            
+
 for key in data_dict.keys():
     data_dict[key] = np.vstack(data_dict[key])
     print(key, data_dict[key].shape)
 
-    
-from scipy.stats import ks_2samp
-
-def get_dist(samp0, samp1):
-    
-    divs = []
-    
-    for i in range(samp0.shape[1]):
-        divs.append(ks_2samp(samp0[:,i], samp1[:,i])[0])
-    return divs
-
-wds = get_dist(data_dict["SB"], data_dict["SB_samples"])
-
-
-for i, wd in enumerate(wds):
-    print(f"Feature {i} KL div: {wd}")
-print(f"Total distance: {np.mean(wds)}")
 
 n_estimators = 100 # number of boosting stages
 max_depth = 20 # max depth of individual regression estimators; related to complexity
@@ -77,8 +60,6 @@ from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score
 import xgboost as xgb
 
 def run_discriminator(data, samples):
-
-
     
     SB_data_train, SB_data_test = train_test_split(data_dict["SB"], test_size=0.1, random_state=42)
     SB_samples_train, SB_samples_test = train_test_split(data_dict["SB_samples"], test_size=0.1, random_state=42)
@@ -126,10 +107,18 @@ def run_discriminator(data, samples):
 
     
 
+ks_dists_samples = get_kl_dist(data_dict["SB"], data_dict["SB_samples"])
+ks_dists_gaussians = get_kl_dist(np.random.normal(size = data_dict["SB"].shape), np.random.normal(size = data_dict["SB_samples"].shape))
+
 
 
 with open(f"flow_training_validations/{args.particle_type}_{args.feature_set}.txt", "w") as ofile:
-    
+                                                  
+    for i, ks_dist in enumerate(ks_dists_samples):
+        ofile.write("Feature {i} KL div: {ks_dist}. (for gaussian: {ks_gauss})\n".format(i=i, ks_dist=ks_dist, ks_gauss=ks_dists_gaussians[i]))
+        
+    ofile.write("\n")
+                                                  
     
     auc_mean, auc_std, best_epoch = run_discriminator(data_dict["SB"], data_dict["SB_samples"])
     ofile.write(f"SB total: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")

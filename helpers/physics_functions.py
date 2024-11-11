@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import numdifftools
 
 from scipy.optimize import curve_fit
@@ -64,6 +65,7 @@ def bkg_fit_ratio(x,p1,p2,p3):
     
  #The following code is used to get the bin errors by propagating the errors on the fit params
 
+
 def get_errors_bkg_fit_ratio(popt, pcov, xdata, bkg_fit_type):
     
     
@@ -95,20 +97,20 @@ def calculate_chi2(y_fit, y_true):
 
 
 
-def get_bins(SR_left, SR_right, SB_left, SB_right, remove_edge):
+def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR = 6):
     
 
-    plot_bins_SR = np.linspace(SR_left, SR_right, 6)
+    plot_bins_SR = np.linspace(SR_left, SR_right, num_bins_SR)
     plot_centers_SR = 0.5*(plot_bins_SR[1:] + plot_bins_SR[:-1])
     width = plot_bins_SR[1] - plot_bins_SR[0]
     
     plot_bins_left = np.arange(SR_left, SB_left-width,  -width)[::-1]
-    if remove_edge:
+    if plot_bins_left[0] < SB_left:
         plot_bins_left = plot_bins_left[1:]
     plot_centers_left = 0.5*(plot_bins_left[1:] + plot_bins_left[:-1])
     
     plot_bins_right = np.arange(SR_right, SB_right+width, width)
-    if remove_edge:
+    if plot_bins_right[-1] > SB_right:
         plot_bins_right = plot_bins_right[:-1]
     plot_centers_right = 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])
     
@@ -140,8 +142,7 @@ def select_top_events_fold(true_masses, scores, score_cutoff, plot_bins_left, pl
     
     return true_masses[pass_scores], SBL_counts_passed/SBL_counts_all, SBH_counts_passed/SBH_counts_all, SR_counts_passed/SR_counts_all
 
-
-    
+   
 def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers, SBL_rescale=None, SBH_rescale=None):
     
 
@@ -156,7 +157,7 @@ def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bi
         n_dof_fit = 6
 
     elif fit_type == "ratio":
-        p0  = [1000,1000,0.1]
+        p0  = [100,1000,.1]
         fit_function = bkg_fit_ratio
         n_dof_fit = 3
         
@@ -191,4 +192,62 @@ def calc_significance(masses, fit_function, plot_bins_SR, SR_left, SR_right, pop
     num_S_expected_in_SR = num_total_in_SR - num_B_expected_in_SR
     
     return num_S_expected_in_SR, num_B_expected_in_SR
+
+
+
+def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_cutoffs_by_fold, mass_scalar, fit_type, title, SB_left, SR_left, SR_right, SB_right, n_folds= 5, take_score_avg=True):
+    
+    if fit_type == "cubic": fit_function = bkg_fit_cubic
+    elif fit_type == "quintic": fit_function = bkg_fit_quintic
+    elif fit_type == "ratio": fit_function = bkg_fit_ratio
+
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
+
+
+    plt.figure(figsize = (12, 9))
+    for t, threshold in enumerate(fpr_thresholds):
+
+        # corrections to SR / SB efficiencies
+        filtered_masses = []
+
+        for i_fold in range(n_folds):
+            loc_true_masses = mass_scalar.inverse_transform(np.array(data_dict_by_fold[i_fold][:,-1]).reshape(-1,1))
+            if take_score_avg:
+                loc_scores = np.mean(scores_dict_by_fold[i_fold], axis = 1)
+            else:
+                loc_scores = scores_dict_by_fold[i_fold]
+            loc_filtered_masses, loc_SBL_eff, loc_SBH_eff, loc_SR_eff = select_top_events_fold(loc_true_masses, loc_scores, score_cutoffs_by_fold[i_fold][threshold],plot_bins_left, plot_bins_right, plot_bins_SR)
+            filtered_masses.append(loc_filtered_masses)
+
+        filtered_masses = np.concatenate(filtered_masses)
+
+        # get the fit function to SB background
+        popt, pcov, chi2, y_vals, n_dof = curve_fit_m_inv(filtered_masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_all)
+        #print("chi2/dof:", chi2/n_dof)
+        # plot the fit function
+        plt.plot(plot_centers_all, fit_function(plot_centers_all, *popt), lw = 2, linestyle = "dashed", color = f"C{t}")    
+
+        # calculate significance of bump
+        num_S_expected_in_SR, num_B_expected_in_SR = calc_significance(filtered_masses, fit_function, plot_bins_SR, SR_left, SR_right, popt)
+
+        y_err = get_errors_bkg_fit_ratio(popt, pcov, plot_centers_SR, fit_type)
+        B_error = np.sum(y_err)
+
+        label_string = str(round(100*threshold, 2))+"% FPR: $S/B$: "+str(round(num_S_expected_in_SR/num_B_expected_in_SR,2))+", $S/\sqrt{B}$: "+str(round(num_S_expected_in_SR/np.sqrt(num_B_expected_in_SR+B_error**2),2))
+
+        plt.hist(filtered_masses, bins = plot_bins_all, lw = 3, histtype = "step", color = f"C{t}",label = label_string)
+        plt.scatter(plot_centers_SB, y_vals, color = f"C{t}")
+
+
+    plt.legend(loc = (1, 0), fontsize = 24)
+
+
+    plt.axvline(SR_left, color= "k", lw = 3, zorder = -10)
+    plt.axvline(SR_right, color= "k", lw = 3, zorder = -10)
+
+    plt.xlabel("$M_{\mu\mu}$ [GeV]", fontsize = 24)
+    plt.ylabel("Counts", fontsize = 24)
+
+    plt.title(title, fontsize = 24)
+    
 
