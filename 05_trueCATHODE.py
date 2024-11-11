@@ -11,7 +11,8 @@ from helpers.density_estimator import DensityEstimator
 from helpers.ANODE_training_utils import train_ANODE, plot_ANODE_losses
 from helpers.data_transforms import clean_data
 from helpers.physics_functions import get_bins, curve_fit_m_inv, bkg_fit_cubic
-
+from helpers.plotting import *
+from helpers.evaluation import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-fid", "--flow_id")
@@ -41,10 +42,7 @@ print(f"Configs: {args.configs}")
 
 from numba import cuda 
 
-from helpers.make_flow import *
-from helpers.train_flow import *
-from helpers.plotting import *
-from helpers.evaluation import *
+
 
 seed = int(args.seed)
 
@@ -148,7 +146,7 @@ val_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_val, SBH_data_val])
 """
 CREATE THE FLOW
 """
-flow_training_dir = os.path.join(f"{working_dir}/models", f"{args.project_id}/{args.flow_id}/{args.configs}")
+flow_training_dir = os.path.join(f"{working_dir}/models", f"{args.project_id}/{args.flow_id}/{args.configs}/seed{args.seed}")
 os.makedirs(flow_training_dir, exist_ok=True)
 
 anode = DensityEstimator(path_to_config_file, num_features, device=device,
@@ -162,15 +160,15 @@ with open(f"{flow_training_dir}/configs.txt", "w") as param_file:
 TRAIN THE FLOW
 """
 
-train_ANODE(model, optimizer, train_loader, val_loader, f"flow_seed{args.seed}",
+train_ANODE(model, optimizer, train_loader, val_loader, f"flow",
             args.epochs, savedir=flow_training_dir, device=device, verbose=args.verbose, no_logit=args.no_logit, data_std=None)
 
 
 # plot losses
-train_losses = np.load(os.path.join(flow_training_dir, "flow_train_losses.npy"))
-val_losses = np.load(os.path.join(flow_training_dir, "flow_val_losses.npy"))
+train_losses = np.load(os.path.join(flow_training_dir, f"flow_train_losses.npy"))
+val_losses = np.load(os.path.join(flow_training_dir, f"flow_val_losses.npy"))
 plot_ANODE_losses(train_losses, val_losses, yrange=None,
-savefig=os.path.join(flow_training_dir, f"loss_plot_seed{args.seed}"),suppress_show=True)
+savefig=os.path.join(flow_training_dir, f"loss_plot"),suppress_show=True)
 
 
 
@@ -253,7 +251,7 @@ custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[
 mass_samples = custom_pdf.sample(n=n_SR_samples)["mass_inv"].numpy()
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
-plt.savefig(f"{flow_training_dir}/bkg_fit_seed{args.seed}")
+plt.savefig(f"{flow_training_dir}/bkg_fit")
          
 
 # now actually generate the samples)
@@ -266,7 +264,7 @@ data_dict["SR_samples_validation"] =  get_samples(mass_samples)
 data_dict["SR_samples_ROC"] =  get_samples(mass_samples) 
 
 
-with open(f"{flow_training_dir}/flow_samples_seed{args.seed}", "wb") as ofile:
+with open(f"{flow_training_dir}/flow_samples", "wb") as ofile:
     pickle.dump(data_dict, ofile)
     
     
