@@ -47,6 +47,7 @@ parser.add_argument("-nb", "--num_bootstraps",default=20)  # how many pseudoexpe
 parser.add_argument("-run_jet", "--run_jet", action="store_true")
 parser.add_argument("-seeds", "--seeds", default="1", help="csv for seeds of flow models to use")
 parser.add_argument("-run_latent", "--run_latent", action="store_true")
+parser.add_argument('-use_extra_data', action="store_true", default=False)
 
 
 args = parser.parse_args()
@@ -98,7 +99,7 @@ elif train_data_id == "_samesign":
 working_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/{dir_id}/"
 flow_training_dir = f"{working_dir}/models/{project_id}_{particle_type}{train_data_id}_{jet_id}/{flow_id}/{config_id}"
 # make dir to save out pickles
-pickle_save_dir = f"pickles/{flow_id}_{particle_type}{train_data_id_title}"
+pickle_save_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/pickles/{flow_id}_{particle_type}{train_data_id_title}"
 os.makedirs(pickle_save_dir, exist_ok=True)
     
 if args.run_latent:
@@ -138,9 +139,9 @@ with open(f"{working_dir}/processed_data/{project_id}_{particle_type}{train_data
 with open(f"{working_dir}/processed_data/{project_id}_{particle_type}{alt_test_data_id}_{jet_id}_test_band_data", "rb") as infile: 
     alt_test_data_dict = pickle.load(infile)
 
-
-with open(f"{working_dir}/processed_data/{project_id}_{particle_type}_{jet_id}_train_band_data", "rb") as infile: 
-    ROC_test_data_1_dict = pickle.load(infile)
+if args.use_extra_data:
+    with open(f"{working_dir}/processed_data/{project_id}_{particle_type}_{jet_id}_train_band_data", "rb") as infile: 
+        ROC_test_data_1_dict = pickle.load(infile)
     
 # ROC set 2 is evaluated on a higher stats version of the flow samples (so may be same or opp sign)
 
@@ -168,19 +169,21 @@ banded_test_data = assemble_banded_datasets(test_data_dict, feature_set, bands)
 # alt test set events
 banded_alt_test_data = assemble_banded_datasets(alt_test_data_dict, feature_set, bands)
 
-# ROC test set events
-banded_ROC_test_data = assemble_banded_datasets(ROC_test_data_1_dict, feature_set, bands)
+
 
 num_test_events = banded_test_data["SR"].shape[0]+banded_test_data["SBL"].shape[0]+banded_test_data["SBH"].shape[0]
 print(f"Total number of default test events: {num_test_events}.")
 num_test_events = banded_alt_test_data["SR"].shape[0]+banded_alt_test_data["SBL"].shape[0]+banded_alt_test_data["SBH"].shape[0]
 print(f"Total number of alt test events: {num_test_events}.")
-num_test_events = banded_ROC_test_data["SR"].shape[0]+banded_ROC_test_data["SBL"].shape[0]+banded_ROC_test_data["SBH"].shape[0]
-print(f"Total number of ROC test events: {num_test_events}.")
-num_test_events = banded_ROC_test_data["SR"].shape[0]+banded_ROC_test_data["SBL"].shape[0]+banded_ROC_test_data["SBH"].shape[0]
-print(f"Total number of ROC test samples: {num_test_events}.")
+    
 
-
+# ROC test set events
+if args.use_extra_data:
+    banded_ROC_test_data = assemble_banded_datasets(ROC_test_data_1_dict, feature_set, bands)
+    num_test_events = banded_ROC_test_data["SR"].shape[0]+banded_ROC_test_data["SBL"].shape[0]+banded_ROC_test_data["SBH"].shape[0]
+    print(f"Total number of ROC test events (and samples): {num_test_events}.")
+    
+    
 SR_min_rescaled = np.min(banded_test_data["SR"][:,-1])
 SR_max_rescaled = np.max(banded_test_data["SR"][:,-1])
 
@@ -233,7 +236,8 @@ for pseudo_e in range(num_bootstraps):
     
     # boostrapped alt set:
     loc_alt_test_set = np.vstack([bootstrap_array(banded_alt_test_data["SR"]),bootstrap_array(banded_alt_test_data["SBL"]),bootstrap_array(banded_alt_test_data["SBH"])])
-    loc_ROC_test_events_1 = np.vstack([bootstrap_array(banded_ROC_test_data["SR"]),bootstrap_array(banded_ROC_test_data["SBL"]),bootstrap_array(banded_ROC_test_data["SBH"])])
+    if args.use_extra_data:
+        loc_ROC_test_events_1 = np.vstack([bootstrap_array(banded_ROC_test_data["SR"]),bootstrap_array(banded_ROC_test_data["SBL"]),bootstrap_array(banded_ROC_test_data["SBH"])])
     loc_ROC_test_samples_2 = np.vstack([bootstrap_array(train_samples_dict["SR_samples_ROC"]),bootstrap_array(train_samples_dict["SBL_samples_ROC"]),bootstrap_array(train_samples_dict["SBH_samples_ROC"])])
     loc_SB_test_set = np.vstack([bootstrap_array(clean_data(banded_test_data["SBL"])),bootstrap_array(clean_data(banded_test_data["SBH"]))])
     loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
@@ -243,7 +247,8 @@ for pseudo_e in range(num_bootstraps):
 
     if args.run_latent:
         loc_alt_test_set = convert_to_latent_space_true_cathode(loc_alt_test_set, n_features, flow_training_dir, configs_path, device)
-        loc_ROC_test_events_1 = convert_to_latent_space_true_cathode(loc_ROC_test_events_1, n_features, flow_training_dir, configs_path, device)
+        if args.use_extra_data:
+            loc_ROC_test_events_1 = convert_to_latent_space_true_cathode(loc_ROC_test_events_1, n_features, flow_training_dir, configs_path, device)
         loc_ROC_test_samples_2 = convert_to_latent_space_true_cathode(loc_ROC_test_samples_2, n_features, flow_training_dir, configs_path, device)
         loc_SB_test_set = convert_to_latent_space_true_cathode(loc_SB_test_set, n_features, flow_training_dir, configs_path, device)
         loc_FPR_val_set = convert_to_latent_space_true_cathode(loc_FPR_val_set, n_features, flow_training_dir, configs_path, device)
@@ -253,8 +258,11 @@ for pseudo_e in range(num_bootstraps):
     
     loc_alt_test_sets_data = {"FPR_validation":loc_FPR_val_set,
                       "alt":loc_alt_test_set,
-                      "ROC_data":loc_ROC_test_events_1,
                      "ROC_samples":loc_ROC_test_samples_2}
+    
+    if args.use_extra_data:
+        loc_alt_test_sets_data["ROC_data"] = loc_ROC_test_events_1
+
     
     # make sure the input data is also bootstrapped
     if pseudo_e==0:
@@ -273,63 +281,6 @@ for pseudo_e in range(num_bootstraps):
 print("Done training BDTs!")
 
 
-
-with open(f"{working_dir}/processed_data/mass_scaler_{particle_type}", "rb") as ifile:
-    scaler = pickle.load(ifile)
-    
-fpr_thresholds = [1, 0.25, 0.1, 0.05, 0.01]
-
-# determine score cutoffs for each pseudoexperiments
-score_cutoffs = {pseudo_e:{i:{threshold:0 for threshold in fpr_thresholds} for i in range(n_folds)} for pseudo_e in range(num_bootstraps)}
-
-for pseudo_e in range(num_bootstraps):
-    for i_fold in range(n_folds):
-        
-        loc_scores_sorted = np.sort(1.0-all_alt_scores_splits[pseudo_e]["FPR_validation"][i_fold])
-        
-        for threshold in fpr_thresholds:
-            
-            loc_score_cutoff = 1-loc_scores_sorted[min(int(threshold*len(loc_scores_sorted)),len(loc_scores_sorted)-1)]
-            score_cutoffs[pseudo_e][i_fold][threshold] = loc_score_cutoff
-
-SB_left = float(workflow[particle_id]["SB_left"])
-SR_left = float(workflow[particle_id]["SR_left"])
-SR_right = float(workflow[particle_id]["SR_right"])
-SB_right = float(workflow[particle_id]["SB_right"])
-    
-pseudo_e_to_plot= 0
-
-
-fit_type = "cubic"
-
-
-"""
-PLOT HISTOGRAM ON SMALL TEST SET
-"""
-plot_histograms_with_fits(fpr_thresholds, all_test_data_splits[pseudo_e_to_plot], all_scores_splits[pseudo_e_to_plot], score_cutoffs[pseudo_e_to_plot], scaler, fit_type,f"{particle_type}{train_data_id_title} (trained on {train_data_id_title})\n"+"  ".join(feature_set[:-1])+"\n", 
-                          SB_left, SR_left, SR_right, SB_right, take_score_avg=False)
-pp.savefig()
-
-
-"""
-PLOT HISTOGRAM ON ALTERNATIVE TEST SET
-"""
-plot_histograms_with_fits(fpr_thresholds, all_alt_data_splits[pseudo_e_to_plot]["alt"], all_alt_scores_splits[pseudo_e_to_plot]["alt"], score_cutoffs[pseudo_e_to_plot], scaler, fit_type, f"{particle_type}{alt_test_data_id} (trained on {train_data_id_title})\n"+"  ".join(feature_set[:-1])+"\n",SB_left, SR_left, SR_right, SB_right, take_score_avg=False)
-pp.savefig()
-
-
-"""
-PLOT HISTOGRAM ON ROC TEST DATA
-"""
-plot_histograms_with_fits(fpr_thresholds, all_alt_data_splits[pseudo_e_to_plot]["ROC_data"], all_alt_scores_splits[pseudo_e_to_plot]["ROC_data"], score_cutoffs[pseudo_e_to_plot], scaler, fit_type,f"high-stats data _oppsign (trained on {train_data_id_title})\n"+"  ".join(feature_set[:-1])+"\n", SB_left, SR_left, SR_right, SB_right, take_score_avg=False)
-pp.savefig()
-
-
-plot_histograms_with_fits(fpr_thresholds, all_alt_data_splits[pseudo_e_to_plot]["ROC_samples"], all_alt_scores_splits[pseudo_e_to_plot]["ROC_samples"], score_cutoffs[pseudo_e_to_plot], scaler, fit_type,f"high-stats samples {train_data_id_title} (trained on {train_data_id_title})\n"+"  ".join(feature_set[:-1])+"\n", SB_left, SR_left, SR_right, SB_right, take_score_avg=False)
-pp.savefig()
-
-with open(f"{pickle_save_dir}/fpr_thresholds", "wb") as ofile:
-    pickle.dump(fpr_thresholds, ofile)
 with open(f"{pickle_save_dir}/all_test_data_splits", "wb") as ofile:
     pickle.dump(all_test_data_splits, ofile)
 with open(f"{pickle_save_dir}/all_alt_data_splits", "wb") as ofile:
@@ -338,178 +289,4 @@ with open(f"{pickle_save_dir}/all_scores_splits", "wb") as ofile:
     pickle.dump(all_scores_splits, ofile)
 with open(f"{pickle_save_dir}/all_alt_scores_splits", "wb") as ofile:
     pickle.dump(all_alt_scores_splits, ofile)
-with open(f"{pickle_save_dir}/score_cutoffs", "wb") as ofile:
-    pickle.dump(score_cutoffs, ofile)
       
-fit_type = "cubic"
-if fit_type == "cubic": fit_function = bkg_fit_cubic
-elif fit_type == "quintic": fit_function = bkg_fit_quintic
-elif fit_type == "ratio": fit_function = bkg_fit_ratio
-
-
-"""
-CALCULATE THE ROC CURVES
-"""
-
-plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
-
-fpr_thresholds_finegrained = np.logspace(0, -3, 20)
-#fpr_thresholds = np.linspace(1, 0 , 50)
-
-# first determine score cutoffs
-score_cutoffs_finegrained = {pseudo_e:{i:{threshold:0 for threshold in fpr_thresholds_finegrained} for i in range(n_folds)} for pseudo_e in range(num_bootstraps)}
-
-for pseudo_e in range(num_bootstraps):
-    for i_fold in range(n_folds):
-        loc_scores_sorted = np.sort(1.0-all_alt_scores_splits[pseudo_e]["FPR_validation"][i_fold])
-        for threshold in fpr_thresholds_finegrained:
-            loc_score_cutoff = 1-loc_scores_sorted[min(int(threshold*len(loc_scores_sorted)),len(loc_scores_sorted)-1)]
-            score_cutoffs_finegrained[pseudo_e][i_fold][threshold] = loc_score_cutoff
-
-
-        
-        
-def get_classifier_metrics_high_stats(dataset_id, score_cutoffs):
-    
-            
-    S_yield, B_yield = np.empty((fpr_thresholds_finegrained.shape[0], num_bootstraps)), np.empty((fpr_thresholds_finegrained.shape[0], num_bootstraps))
-
-    for pseudo_e in range(num_bootstraps):
-
-        print(f"On pseudo experiment {pseudo_e+1}...")
-        for t, threshold in enumerate(fpr_thresholds_finegrained):
-
-            filtered_masses_bs = []
-
-            for i_fold in range(n_folds):
-                loc_true_masses_bs = scaler.inverse_transform(np.array(all_alt_data_splits[pseudo_e][dataset_id][i_fold][:,-1]).reshape(-1,1))
-                loc_scores_bs = all_alt_scores_splits[pseudo_e][dataset_id][i_fold]
-                # filter top event based on score cutoff
-                loc_filtered_masses_bs, _, _, _ = select_top_events_fold(loc_true_masses_bs, loc_scores_bs, score_cutoffs[pseudo_e][i_fold][threshold], plot_bins_left, plot_bins_right, plot_bins_SR)
-                filtered_masses_bs.append(loc_filtered_masses_bs)
-
-            filtered_masses_bs = np.concatenate(filtered_masses_bs)
-            # get the fit function to SB background
-            popt, pcov, chi2, y_vals, n_dof = curve_fit_m_inv(filtered_masses_bs, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_all)
-            num_S_expected_in_SR, num_B_expected_in_SR = calc_significance(filtered_masses_bs, fit_function, plot_bins_SR, SR_left, SR_right, popt)
-            
-        
-            S_yield[t, pseudo_e] = num_S_expected_in_SR
-            B_yield[t, pseudo_e] = num_B_expected_in_SR
-            
-        
-    
-
-    # calculate summary stats
-    TPR = S_yield/S_yield[0,:]
-    FPR = B_yield/B_yield[0,:]
-    
-
-    ROC = 1.0/FPR
-
-    SIC = TPR/np.sqrt(FPR)
-    
-    return TPR, FPR, ROC, SIC
-
-
-TPR, FPR, ROC, SIC = get_classifier_metrics_high_stats("ROC_data", score_cutoffs_finegrained)
-
-with open(f"{pickle_save_dir}/TPR_data", "wb") as ofile:
-    pickle.dump(TPR, ofile)
-with open(f"{pickle_save_dir}/FPR_data", "wb") as ofile:
-    pickle.dump(FPR, ofile)
-with open(f"{pickle_save_dir}/ROC_data", "wb") as ofile:
-    pickle.dump(ROC, ofile)
-with open(f"{pickle_save_dir}/SIC_data", "wb") as ofile:
-    pickle.dump(SIC, ofile)
-
-     
-TPR_median, TPR_lower, TPR_upper = get_median_percentiles(TPR)
-FPR_median, FPR_lower, FPR_upper = get_median_percentiles(FPR)
-ROC_median, ROC_lower, ROC_upper = get_median_percentiles(ROC)
-SIC_median, SIC_lower, SIC_upper = get_median_percentiles(SIC)
-
-plt.figure(figsize = (5, 5))
-plt.plot(FPR_median, TPR_median)
-plt.fill_between(FPR_median, TPR_lower, TPR_upper, alpha = 0.3 )
-plt.plot(FPR_median, FPR_median, linestyle = "dashed", color = "grey")
-plt.xlabel("FPR")
-plt.ylabel("TPR")
-plt.title(f"high-stats data _oppsign (trained on {train_data_id_title})")
-
-pp.savefig()
-
-fig, ax = plt.subplots(1, 2, figsize = (10, 4))
-
-
-ax[0].plot(TPR_median, ROC_median)
-ax[0].fill_between(TPR_median, ROC_lower, ROC_upper, alpha = 0.3 )
-ax[0].plot(TPR_median, 1.0/TPR_median, linestyle = "dashed", color = "grey")
-ax[0].set_xlabel("TPR")
-ax[0].set_ylabel("1/FPR")
-ax[0].set_yscale("log")
-
-ax[1].plot(TPR_median, SIC_median)
-ax[1].fill_between(TPR_median, SIC_lower, SIC_upper, alpha = 0.3 )
-ax[1].plot(TPR_median, TPR_median/np.sqrt(TPR_median), linestyle = "dashed", color = "grey")
-ax[1].set_xlabel("TPR")
-ax[1].set_ylabel("SIC")
-
-pp.savefig()
-
-
-
-TPR, FPR, ROC, SIC = get_classifier_metrics_high_stats("ROC_samples", score_cutoffs_finegrained)
-
-with open(f"{pickle_save_dir}/TPR_samples", "wb") as ofile:
-    pickle.dump(TPR, ofile)
-with open(f"{pickle_save_dir}/FPR_samples", "wb") as ofile:
-    pickle.dump(FPR, ofile)
-with open(f"{pickle_save_dir}/ROC_samples", "wb") as ofile:
-    pickle.dump(ROC, ofile)
-with open(f"{pickle_save_dir}/SIC_samples", "wb") as ofile:
-    pickle.dump(SIC, ofile)
-
-     
-TPR_median, TPR_lower, TPR_upper = get_median_percentiles(TPR)
-FPR_median, FPR_lower, FPR_upper = get_median_percentiles(FPR)
-ROC_median, ROC_lower, ROC_upper = get_median_percentiles(ROC)
-SIC_median, SIC_lower, SIC_upper = get_median_percentiles(SIC)
-
-plt.figure(figsize = (5, 5))
-plt.plot(FPR_median, TPR_median)
-plt.fill_between(FPR_median, TPR_lower, TPR_upper, alpha = 0.3 )
-plt.plot(FPR_median, FPR_median, linestyle = "dashed", color = "grey")
-plt.xlabel("FPR")
-plt.ylabel("TPR")
-plt.title(f"{train_data_id_title} high-stats samples (trained on {train_data_id_title})")
-
-pp.savefig()
-
-fig, ax = plt.subplots(1, 2, figsize = (10, 4))
-
-
-ax[0].plot(TPR_median, ROC_median)
-ax[0].fill_between(TPR_median, ROC_lower, ROC_upper, alpha = 0.3 )
-ax[0].plot(TPR_median, 1.0/TPR_median, linestyle = "dashed", color = "grey")
-ax[0].set_xlabel("TPR")
-ax[0].set_ylabel("1/FPR")
-ax[0].set_yscale("log")
-
-ax[1].plot(TPR_median, SIC_median)
-ax[1].fill_between(TPR_median, SIC_lower, SIC_upper, alpha = 0.3 )
-ax[1].plot(TPR_median, TPR_median/np.sqrt(TPR_median), linestyle = "dashed", color = "grey")
-ax[1].set_xlabel("TPR")
-ax[1].set_ylabel("SIC")
-
-pp.savefig()
-
-
-
-
-pp.close()
-
-print("All done!")
-
-
-
