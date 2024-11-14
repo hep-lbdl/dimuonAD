@@ -195,10 +195,9 @@ def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bi
 
     return popt, pcov, chi2, y_vals, len(y_vals) - n_dof_fit
     
-def calc_significance(masses, fit_function, plot_bins_SR, SR_left, SR_right, popt):
+def calc_significance(masses, fit_function, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt):
 
-    x_SR_center = 0.5*(plot_bins_SR[1:] + plot_bins_SR[:-1])
-    num_B_expected_in_SR = sum(fit_function(x_SR_center, *popt))
+    num_B_expected_in_SR = sum(fit_function(plot_centers_SR, *popt))
     num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
 
     num_S_expected_in_SR = num_total_in_SR - num_B_expected_in_SR
