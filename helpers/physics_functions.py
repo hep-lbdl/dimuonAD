@@ -56,6 +56,9 @@ def bkg_fit_cubic(x, a0, a1, a2, a3):
 def bkg_fit_quintic(x, a0, a1, a2, a3, a4, a5):
     return a0 + a1*x + a2*x**2 + a3*x**3 + a4*x**4 + a5*x**5
 
+def bkg_fit_septic(x, a0, a1, a2, a3, a4, a5, a6, a7):
+    return a0 + a1*x + a2*x**2 + a3*x**3 + a4*x**4 + a5*x**5 + a6*x**6 + a7*x**7
+
 # https://github.com/jackhcollins/CWoLa-Hunting/blob/master/code/pvalues_analysis.ipynb
 def bkg_fit_ratio(x,p1,p2,p3):
         #see the ATLAS diboson resonance search: https://arxiv.org/pdf/1708.04445.pdf.
@@ -78,6 +81,10 @@ def get_errors_bkg_fit_ratio(popt, pcov, xdata, bkg_fit_type):
         elif bkg_fit_type == "quintic":
             a0, a1, a2, a3, a4, a5 = parr
             return np.array([bkg_fit_quintic(x, a0, a1, a2, a3, a4, a5) for x in xdata])
+        
+        elif bkg_fit_type == "septic":
+            a0, a1, a2, a3, a4, a5, a6, a7 = parr
+            return np.array([bkg_fit_septic(x, a0, a1, a2, a3, a4, a5, a6, a7) for x in xdata])
         
         if bkg_fit_type == "ratio":
             p1, p2, p3 = parr
@@ -114,8 +121,8 @@ def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR = 6):
         plot_bins_right = plot_bins_right[:-1]
     plot_centers_right = 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])
     
-    plot_centers_all = np.concatenate((plot_centers_left, plot_centers_right))
-    plot_centers_SB = np.concatenate([0.5*(plot_bins_left[1:] + plot_bins_left[:-1]), 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])])
+    plot_centers_all = np.concatenate((plot_centers_left, plot_centers_SR, plot_centers_right))
+    plot_centers_SB =np.concatenate((plot_centers_left, plot_centers_right))
     plot_bins_all = np.concatenate([plot_bins_left, plot_bins_SR, plot_bins_right])
     
     
@@ -143,7 +150,7 @@ def select_top_events_fold(true_masses, scores, score_cutoff, plot_bins_left, pl
     return true_masses[pass_scores], SBL_counts_passed/SBL_counts_all, SBH_counts_passed/SBH_counts_all, SR_counts_passed/SR_counts_all
 
    
-def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers, SBL_rescale=None, SBH_rescale=None):
+def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB, SBL_rescale=None, SBH_rescale=None):
     
 
     if fit_type == "cubic":
@@ -155,6 +162,11 @@ def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bi
         p0  = [5000, -20000, 30000, -10000, 0, 0]
         fit_function = bkg_fit_quintic
         n_dof_fit = 6
+        
+    elif fit_type == "septic":
+        p0  = [5000, -20000, 30000, -10000, 0, 0, 0, 0]
+        fit_function = bkg_fit_septic
+        n_dof_fit = 8
 
     elif fit_type == "ratio":
         p0  = [100,1000,.1]
@@ -176,10 +188,10 @@ def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bi
         y_vals = np.concatenate((y_vals_left, y_vals_right))
 
     # fit the SB data
-    popt, pcov = curve_fit(fit_function, plot_centers, y_vals, p0, maxfev=10000)
+    popt, pcov = curve_fit(fit_function, plot_centers_SB, y_vals, p0, maxfev=10000)
 
     # get chi2 in the SB
-    chi2 = calculate_chi2(fit_function(plot_centers, *popt), y_vals)
+    chi2 = calculate_chi2(fit_function(plot_centers_SB, *popt), y_vals)
 
     return popt, pcov, chi2, y_vals, len(y_vals) - n_dof_fit
     
@@ -199,6 +211,7 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
     
     if fit_type == "cubic": fit_function = bkg_fit_cubic
     elif fit_type == "quintic": fit_function = bkg_fit_quintic
+    elif fit_type == "septic": fit_function = bkg_fit_septic
     elif fit_type == "ratio": fit_function = bkg_fit_ratio
 
     plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
@@ -231,9 +244,12 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
         num_S_expected_in_SR, num_B_expected_in_SR = calc_significance(filtered_masses, fit_function, plot_bins_SR, SR_left, SR_right, popt)
 
         y_err = get_errors_bkg_fit_ratio(popt, pcov, plot_centers_SR, fit_type)
-        B_error = np.sum(y_err)
+        B_error = np.sqrt(np.sum(y_err**2))
+        
+        S_over_B = num_S_expected_in_SR/num_B_expected_in_SR
+        significance = num_S_expected_in_SR/np.sqrt(num_B_expected_in_SR+B_error**2)
 
-        label_string = str(round(100*threshold, 2))+"% FPR: $S/B$: "+str(round(num_S_expected_in_SR/num_B_expected_in_SR,2))+", $S/\sqrt{B}$: "+str(round(num_S_expected_in_SR/np.sqrt(num_B_expected_in_SR+B_error**2),2))
+        label_string = str(round(100*threshold, 2))+"% FPR: $S/B$: "+str(round(S_over_B,4))+", $S/\sqrt{B}$: "+str(round(significance,4))
 
         plt.hist(filtered_masses, bins = plot_bins_all, lw = 3, histtype = "step", color = f"C{t}",label = label_string)
         plt.scatter(plot_centers_SB, y_vals, color = f"C{t}")
