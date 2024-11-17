@@ -10,7 +10,7 @@ import yaml
 from helpers.density_estimator import DensityEstimator
 from helpers.ANODE_training_utils import train_ANODE, plot_ANODE_losses
 from helpers.data_transforms import clean_data
-from helpers.physics_functions import get_bins, curve_fit_m_inv, bkg_fit_cubic
+from helpers.physics_functions import get_bins, curve_fit_m_inv, bkg_fit_cubic, bkg_fit_quintic, bkg_fit_septic
 from helpers.plotting import *
 from helpers.evaluation import *
 
@@ -19,6 +19,7 @@ parser.add_argument("-fid", "--flow_id")
 parser.add_argument("-f", "--features")
 parser.add_argument("-pid", "--project_id", help='ID associated with the dataset')
 parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
+parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
 parser.add_argument("-c", "--configs")
 parser.add_argument('-seed', '--seed', default=1)
 parser.add_argument('--no_logit', action="store_true", default=False,
@@ -27,6 +28,7 @@ parser.add_argument('--epochs', default=400)
 parser.add_argument('--verbose', default=False)
 parser.add_argument('--use_inner_bands', action="store_true", default=False)
 parser.add_argument('--use_extra_data', action="store_true", default=False)
+parser.add_argument('-no_train', '--no_train', action="store_true", default=False)
 
 
 batch_size = 256
@@ -68,6 +70,11 @@ LOAD IN DATA
 """
 
 use_inner_bands = args.use_inner_bands
+bkg_fit_type = args.bkg_fit_type
+if bkg_fit_type == "cubic": bkg_fit_function = bkg_fit_cubic
+elif bkg_fit_type == "quintic": bkg_fit_function = bkg_fit_quintic
+elif bkg_fit_type == "septic": bkg_fit_function = bkg_fit_septic
+
 
 if use_inner_bands:
     bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
@@ -159,9 +166,9 @@ with open(f"{flow_training_dir}/configs.txt", "w") as param_file:
 """
 TRAIN THE FLOW
 """
-
-train_ANODE(model, optimizer, train_loader, val_loader, f"flow",
-            args.epochs, savedir=flow_training_dir, device=device, verbose=args.verbose, no_logit=args.no_logit, data_std=None)
+if not args.no_train:
+    train_ANODE(model, optimizer, train_loader, val_loader, f"flow",
+                args.epochs, savedir=flow_training_dir, device=device, verbose=args.verbose, no_logit=args.no_logit, data_std=None)
 
 
 # plot losses
@@ -226,27 +233,44 @@ x = np.linspace(SB_left, SB_right, 100) # plot curve fit
 
 
 # do the curve fit
-popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, "cubic", SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_all)
+popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, bkg_fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
 
 plt.figure(figsize = (7,5))
-plt.plot(x, bkg_fit_cubic(x, *popt_0), lw = 3, linestyle = "dashed", label = "SB fit")
+plt.plot(x, bkg_fit_function(x, *popt_0), lw = 3, linestyle = "dashed", label = "SB fit")
 plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "SB data") 
 # estimate number of samples
-n_SR_samples = int(np.sum(bkg_fit_cubic(plot_centers_SR, *popt_0)))
-    
-    
+n_SR_samples = int(np.sum(bkg_fit_function(plot_centers_SR, *popt_0)))
+
 import zfit
 from zfit import z
 
 class CustomPDF(zfit.pdf.ZPDF):
-    _PARAMS = ("a0","a1","a2","a3")  # specify which parameters to take
-
-    def _unnormalized_pdf(self, x):  # implement function
-        data = z.unstack_x(x)
-        return bkg_fit_cubic(data, self.params["a0"],self.params["a1"],self.params["a2"],self.params["a3"])
+    if bkg_fit_type == "cubic":
+        _PARAMS = ("a0","a1","a2","a3")  # specify which parameters to take
+        def _unnormalized_pdf(self, x):  # implement function
+            data = z.unstack_x(x)
+            return bkg_fit_cubic(data, self.params["a0"],self.params["a1"],self.params["a2"],self.params["a3"])
+    elif bkg_fit_type == "quintic":
+        _PARAMS = ("a0","a1","a2","a3","a4","a5")  # specify which parameters to take
+        def _unnormalized_pdf(self, x):  # implement function
+            data = z.unstack_x(x)
+            return bkg_fit_quintic(data, self.params["a0"],self.params["a1"],self.params["a2"],self.params["a3"],self.params["a4"],self.params["a5"])
+    if bkg_fit_type == "septic":
+        _PARAMS = ("a0","a1","a2","a3","a4","a5","a6","a7")  # specify which parameters to take
+        def _unnormalized_pdf(self, x):  # implement function
+            data = z.unstack_x(x)
+            return bkg_fit_septic(data, self.params["a0"],self.params["a1"],self.params["a2"],self.params["a3"],self.params["a4"],self.params["a5"],self.params["a6"],self.params["a7"])
 
 obs = zfit.Space("mass_inv", limits=(SR_left, SR_right))
-custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3])
+
+if bkg_fit_type == "cubic":
+    custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3])
+elif bkg_fit_type == "quintic":
+    custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3],a4=popt_0[4],a5=popt_0[5])
+elif bkg_fit_type == "septic":
+    custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3],a4=popt_0[4],a5=popt_0[5],a6=popt_0[6],a7=popt_0[7])
+
+
 
 mass_samples = custom_pdf.sample(n=n_SR_samples)["mass_inv"].numpy()
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    

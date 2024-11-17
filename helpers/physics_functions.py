@@ -199,7 +199,7 @@ def calc_significance(masses, fit_function, plot_bins_SR, plot_centers_SR, SR_le
 
     num_B_expected_in_SR = sum(fit_function(plot_centers_SR, *popt))
     num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
-
+    
     num_S_expected_in_SR = num_total_in_SR - num_B_expected_in_SR
     
     return num_S_expected_in_SR, num_B_expected_in_SR
