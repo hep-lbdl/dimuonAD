@@ -10,9 +10,10 @@ import yaml
 from helpers.density_estimator import DensityEstimator
 from helpers.ANODE_training_utils import train_ANODE, plot_ANODE_losses
 from helpers.data_transforms import clean_data
-from helpers.physics_functions import get_bins, curve_fit_m_inv, bkg_fit_cubic, bkg_fit_quintic, bkg_fit_septic
+from helpers.physics_functions import get_bins, get_bins_for_scan, curve_fit_m_inv, bkg_fit_cubic, bkg_fit_quintic, bkg_fit_septic
 from helpers.plotting import *
 from helpers.evaluation import *
+from helpers.flow_sampling import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-fid", "--flow_id")
@@ -29,6 +30,8 @@ parser.add_argument('--verbose', default=False)
 parser.add_argument('--use_inner_bands', action="store_true", default=False)
 parser.add_argument('--use_extra_data', action="store_true", default=False)
 parser.add_argument('-no_train', '--no_train', action="store_true", default=False)
+parser.add_argument('-premade_bins', '--premade_bins', action="store_true", default=False, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
+
 
 
 batch_size = 256
@@ -182,12 +185,12 @@ savefig=os.path.join(flow_training_dir, f"loss_plot"),suppress_show=True)
 """
 MAKE SAMPLES
 """
+print()
+print("Making flow samples...")
 
 # get epoch of best val loss
 best_epoch = np.nanargmin(val_losses) - 1
 model_path = f"{flow_training_dir}/flow_epoch_{best_epoch}.par"
-
-
 
 eval_model = DensityEstimator(path_to_config_file, num_features,
                          eval_mode=True,
@@ -195,97 +198,58 @@ eval_model = DensityEstimator(path_to_config_file, num_features,
                          device=device, verbose=args.verbose,
                          bound=args.no_logit)
 
-
-def get_samples(masses):
-    
-    with torch.no_grad():
-
-        feats = eval_model.model.sample(num_samples=masses.shape[0], cond_inputs=torch.tensor(masses.reshape(-1,1)).float()).detach().cpu().numpy()
-    
-    return np.hstack([feats, masses.reshape(-1,1)])
-
-
-data_dict["SBL_samples"] = get_samples(data_dict["SBL"][:,-1]) 
-data_dict["SBH_samples"] = get_samples(data_dict["SBH"][:,-1]) 
+data_dict["SBL_samples"] = get_flow_samples(eval_model, data_dict["SBL"][:,-1]) 
+data_dict["SBH_samples"] = get_flow_samples(eval_model, data_dict["SBH"][:,-1]) 
 data_dict["SB_samples"] =  np.vstack((data_dict["SBL_samples"], data_dict["SBH_samples"]))
 
 if use_inner_bands:
-    data_dict["IBL_samples"] = get_samples(data_dict["IBL"][:,-1]) 
-    data_dict["IBH_samples"] = get_samples(data_dict["IBH"][:,-1]) 
+    data_dict["IBL_samples"] = get_flow_samples(eval_model, data_dict["IBL"][:,-1]) 
+    data_dict["IBH_samples"] = get_flow_samples(eval_model, data_dict["IBH"][:,-1]) 
     data_dict["IB_samples"] =  np.vstack((data_dict["IBL_samples"], data_dict["IBH_samples"]))
 
-    
 # more samples for a high stats validation set
-data_dict["SBL_samples_ROC"] =  get_samples(data_dict["SBL"][:,-1]) 
-data_dict["SBH_samples_ROC"] =  get_samples(data_dict["SBH"][:,-1]) 
+data_dict["SBL_samples_ROC"] =  get_flow_samples(eval_model, data_dict["SBL"][:,-1]) 
+data_dict["SBH_samples_ROC"] =  get_flow_samples(eval_model, data_dict["SBH"][:,-1]) 
 
 
 # to draw peakless samples from the SR, we need to first do a bkg fit in the SB
-SB_left, SR_left = np.min(data_dict["SBL"][:,-1].reshape(-1)),  np.max(data_dict["SBL"][:,-1].reshape(-1))
-SR_right, SB_right = np.min(data_dict["SBH"][:,-1].reshape(-1)),  np.max(data_dict["SBH"][:,-1].reshape(-1))
-
-
 masses_to_fit = np.hstack((data_dict["SBL"][:,-1], data_dict["SBH"][:,-1]))
 
-
-plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
+if args.premade_bins:
+    window_index = int(args.project_id.split("_")[1])
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins_for_scan(f"{working_dir}/processed_data", window_index, scale_bins = True)
+    SR_left, SR_right = plot_bins_SR[0], plot_bins_SR[-1]
+    SB_left, SB_right = plot_bins_left[0], plot_bins_right[-1]
+else:
+    # for a single window, we can define the SR / SB bins on the fly
+    print("Defining bins on the fly...")
+    SB_left, SR_left = np.min(data_dict["SBL"][:,-1].reshape(-1)),  np.max(data_dict["SBL"][:,-1].reshape(-1))
+    SR_right, SB_right = np.min(data_dict["SBH"][:,-1].reshape(-1)),  np.max(data_dict["SBH"][:,-1].reshape(-1))
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, binning="linear")
+    
 x = np.linspace(SB_left, SB_right, 100) # plot curve fit
-
-
-# do the curve fit
 popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, bkg_fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
 
 plt.figure(figsize = (7,5))
 plt.plot(x, bkg_fit_function(x, *popt_0), lw = 3, linestyle = "dashed", label = "SB fit")
 plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "SB data") 
+
 # estimate number of samples
 n_SR_samples = int(np.sum(bkg_fit_function(plot_centers_SR, *popt_0)))
+# make samples
+mass_samples = get_mass_samples(SR_left, SR_right, bkg_fit_type, n_SR_samples, popt_0)
 
-import zfit
-from zfit import z
-
-class CustomPDF(zfit.pdf.ZPDF):
-    if bkg_fit_type == "cubic":
-        _PARAMS = ("a0","a1","a2","a3")  # specify which parameters to take
-        def _unnormalized_pdf(self, x):  # implement function
-            data = z.unstack_x(x)
-            return bkg_fit_cubic(data, self.params["a0"],self.params["a1"],self.params["a2"],self.params["a3"])
-    elif bkg_fit_type == "quintic":
-        _PARAMS = ("a0","a1","a2","a3","a4","a5")  # specify which parameters to take
-        def _unnormalized_pdf(self, x):  # implement function
-            data = z.unstack_x(x)
-            return bkg_fit_quintic(data, self.params["a0"],self.params["a1"],self.params["a2"],self.params["a3"],self.params["a4"],self.params["a5"])
-    if bkg_fit_type == "septic":
-        _PARAMS = ("a0","a1","a2","a3","a4","a5","a6","a7")  # specify which parameters to take
-        def _unnormalized_pdf(self, x):  # implement function
-            data = z.unstack_x(x)
-            return bkg_fit_septic(data, self.params["a0"],self.params["a1"],self.params["a2"],self.params["a3"],self.params["a4"],self.params["a5"],self.params["a6"],self.params["a7"])
-
-obs = zfit.Space("mass_inv", limits=(SR_left, SR_right))
-
-if bkg_fit_type == "cubic":
-    custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3])
-elif bkg_fit_type == "quintic":
-    custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3],a4=popt_0[4],a5=popt_0[5])
-elif bkg_fit_type == "septic":
-    custom_pdf = CustomPDF(obs=obs,a0=popt_0[0],a1=popt_0[1],a2=popt_0[2],a3=popt_0[3],a4=popt_0[4],a5=popt_0[5],a6=popt_0[6],a7=popt_0[7])
-
-
-
-mass_samples = custom_pdf.sample(n=n_SR_samples)["mass_inv"].numpy()
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
 plt.savefig(f"{flow_training_dir}/bkg_fit")
          
 
-# now actually generate the samples)
 
-
-data_dict["SR_samples"] =  get_samples(mass_samples) 
+data_dict["SR_samples"] =  get_flow_samples(eval_model, mass_samples) 
 # generate more samples to determine score cutoff at fixed FPR
-data_dict["SR_samples_validation"] =  get_samples(mass_samples) 
+data_dict["SR_samples_validation"] = get_flow_samples(eval_model, mass_samples) 
 # get even more samples for a ROC set
-data_dict["SR_samples_ROC"] =  get_samples(mass_samples) 
+data_dict["SR_samples_ROC"] =  get_flow_samples(eval_model, mass_samples) 
 
 
 with open(f"{flow_training_dir}/flow_samples", "wb") as ofile:
