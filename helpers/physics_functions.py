@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import numdifftools
+import pickle
 
 from scipy.optimize import curve_fit
 
@@ -155,7 +156,43 @@ def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR=6, binning="linea
     
     return plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB
              
+def get_bins_for_scan(path_to_bin_defs_folder, window_index, scale_bins=False):
     
+    """
+    If this code is run on preprocessed data, then the bin definitions need to be modified with a scalar
+    """
+    
+    print(f"Loading in bin definitions from {path_to_bin_defs_folder}/bin_definitions...")
+    with open(f"{path_to_bin_defs_folder}/bin_definitions", "rb") as infile:
+        bin_definitions = pickle.load(infile)
+    window_bin_definitions = bin_definitions[window_index]
+    
+    plot_bins_SR = window_bin_definitions["SR"]
+    plot_bins_left = window_bin_definitions["SBL"]
+    plot_bins_right = window_bin_definitions["SBH"]
+    
+    plot_centers_SR = [np.sqrt(plot_bins_SR[i]*plot_bins_SR[i+1]) for i in range(len(plot_bins_SR)-1)]
+    plot_centers_left = [np.sqrt(plot_bins_left[i]*plot_bins_left[i+1]) for i in range(len(plot_bins_left)-1)]
+    plot_centers_right = [np.sqrt(plot_bins_right[i]*plot_bins_right[i+1]) for i in range(len(plot_bins_right)-1)]
+
+    plot_centers_all = np.concatenate((plot_centers_left, plot_centers_SR, plot_centers_right))
+    plot_centers_SB = np.concatenate((plot_centers_left, plot_centers_right))
+    plot_bins_all = np.concatenate([plot_bins_left[:-1], plot_bins_SR, plot_bins_right[1:]])
+    
+    if scale_bins:
+        with open(f"{path_to_bin_defs_folder}/mass_scaler_{window_index}", "rb") as infile:
+            mass_scaler = pickle.load(infile)
+        plot_bins_all = mass_scaler.transform(np.array(plot_bins_all).reshape(-1,1)).reshape(-1,)
+        plot_bins_SR = mass_scaler.transform(np.array(plot_bins_SR).reshape(-1,1)).reshape(-1,)
+        plot_bins_left = mass_scaler.transform(np.array(plot_bins_left).reshape(-1,1)).reshape(-1,)
+        plot_bins_right = mass_scaler.transform(np.array(plot_bins_right).reshape(-1,1)).reshape(-1,)
+        plot_centers_all = mass_scaler.transform(np.array(plot_centers_all).reshape(-1,1)).reshape(-1,)
+        plot_centers_SR = mass_scaler.transform(np.array(plot_centers_SR).reshape(-1,1)).reshape(-1,)
+        plot_centers_SB = mass_scaler.transform(np.array(plot_centers_SB).reshape(-1,1)).reshape(-1,)
+            
+    return plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB
+    
+
 def select_top_events_fold(true_masses, scores, score_cutoff, plot_bins_left, plot_bins_right, plot_bins_SR):
     
     """

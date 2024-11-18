@@ -23,6 +23,7 @@ def get_median_percentiles(x_array):
 
     return x_median, x_lower, x_upper
 
+"""
 def sample_from_flow(model_path, device, context, num_features):
     
     print(f"Loading in the best flow model ...")
@@ -42,7 +43,7 @@ def sample_from_flow(model_path, device, context, num_features):
     
     return SB_samples
 
-"""
+
 def convert_to_latent_space(samples_to_convert, flow_training_dir, training_config_string, device):
 
 
