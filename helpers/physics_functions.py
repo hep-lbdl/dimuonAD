@@ -3,7 +3,9 @@ import matplotlib.pyplot as plt
 import numdifftools
 import pickle
 
+from scipy.special import erfcinv
 from scipy.optimize import curve_fit
+from scipy import stats
 
 
 muon_mass = 0.1056583755 # GeV
@@ -101,7 +103,7 @@ def get_errors_bkg_fit_ratio(popt, pcov, xdata, bkg_fit_type):
 
 
 def calculate_chi2(y_fit, y_true):
-    return np.sum((y_fit - y_true)**2/y_true)
+    return np.sum((y_fit - y_true)**2/np.sqrt(y_true+1)**2)
 
 
 
@@ -252,20 +254,77 @@ def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bi
         y_vals = np.concatenate((y_vals_left, y_vals_right))
 
     # fit the SB data
-    popt, pcov = curve_fit(fit_function, plot_centers_SB, y_vals, p0, maxfev=10000)
+    y_err = np.sqrt(y_vals + 1)
+    popt, pcov = curve_fit(fit_function, plot_centers_SB, y_vals, p0, sigma = y_err, maxfev=10000)
 
     # get chi2 in the SB
     chi2 = calculate_chi2(fit_function(plot_centers_SB, *popt), y_vals)
 
     return popt, pcov, chi2, y_vals, len(y_vals) - n_dof_fit
-    
-def calc_significance(masses, fit_function, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt):
+
+
+
+
+
+
+
+def calc_significance(masses, fit_function, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, pcov = None, ONE_SIDED = False, TWO_SIDED = False):
 
     num_B_expected_in_SR = sum(fit_function(plot_centers_SR, *popt))
     num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
     
     num_S_expected_in_SR = num_total_in_SR - num_B_expected_in_SR
-    
+
+    # ONE-SIDED CONSTRAINT
+    if ONE_SIDED:
+
+        # Get hist of just B 
+        B_function = fit_function(plot_centers_SR, *popt)
+
+        # Get hist of SR data (S+B)
+        S_plus_B_function, _ = np.histogram(masses, bins = plot_bins_SR, density = False)
+
+        # If S+B is less than B, then raise the S+B to the B level
+        S_plus_B_function = np.where(S_plus_B_function < B_function, B_function, S_plus_B_function)
+
+        # Get the expected number of S events in SR
+        num_S_expected_in_SR = sum(S_plus_B_function) - num_B_expected_in_SR
+
+
+    if TWO_SIDED:
+
+        if pcov is None:
+            raise ValueError("Need to provide covariance matrix for two-sided significance calculation")
+
+        # Get the chi2 between the fit and the data in the SR
+        B_function = fit_function(plot_centers_SR, *popt) 
+
+        # Get the fit errors using resampling trick
+        n = 1000
+        temp_params = np.random.multivariate_normal(popt, pcov, n)
+        y = np.array([fit_function(plot_centers_SR, *p) for p in temp_params])
+        B_error = np.std(y, axis = 0)
+
+        S_plus_B_function, _ = np.histogram(masses, bins = plot_bins_SR, density = False)
+        B_error = np.sqrt(B_error**2 + np.sqrt(S_plus_B_function + 1)**2)
+
+        # Get the chi2 between the data and the fit
+        chi2 = np.sum((S_plus_B_function - B_function)**2 / B_error**2)
+        N_DOF = len(S_plus_B_function) - len(popt)
+        chi2_ndof = chi2/N_DOF
+
+        # p_value = 1 - stats.chi2.cdf(chi2, N_DOF)
+        log_p_value = stats.chi2.logsf(chi2, N_DOF)
+        significance =  np.sqrt(2) * erfcinv(1 * np.exp(log_p_value))
+        # significance = stats.norm.ppf(1 - np.exp(log_p_value) / 2)
+        # approx_significance = (chi2 - N_DOF) /  np.sqrt(2*N_DOF)
+
+        # print("chi2/ndof:", chi2_ndof, "p_value:", np.exp(log_p_value), "significance:", significance)
+
+        return num_S_expected_in_SR, num_B_expected_in_SR, significance
+
+
+
     return num_S_expected_in_SR, num_B_expected_in_SR
 
 
