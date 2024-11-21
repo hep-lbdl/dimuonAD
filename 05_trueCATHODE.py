@@ -179,7 +179,6 @@ if not args.no_train:
 # plot losses
 train_losses = np.load(os.path.join(flow_training_dir, f"flow_train_losses.npy"))
 val_losses = np.load(os.path.join(flow_training_dir, f"flow_val_losses.npy"))
-print(train_losses)
 plot_ANODE_losses(train_losses, val_losses, yrange=None,
 savefig=os.path.join(flow_training_dir, f"loss_plot"),suppress_show=True)
 
@@ -242,7 +241,6 @@ n_SR_samples = int(np.sum(bkg_fit_function(plot_centers_SR, *popt_0)))
 # make samples
 mass_samples = get_mass_samples(SR_left, SR_right, bkg_fit_type, n_SR_samples, popt_0)
 
-print(mass_samples)
 
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()

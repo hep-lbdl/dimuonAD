@@ -35,7 +35,11 @@ feature_sets:
     mix_0: 
         - dimu_pt
         - mu0_iso04
-        - mu1_iso04
+        - mu1_iso04     
+    mix_2: 
+        - dimu_pt
+        - mu0_ip3d
+        - mu1_ip3d
 
 
 eta:

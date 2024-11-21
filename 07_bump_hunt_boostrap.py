@@ -233,19 +233,29 @@ def bootstrap_array(data_array):
 for pseudo_e in range(num_bootstraps):
     
     print(f"On pseudoexperiment {pseudo_e+1} of {num_bootstraps}...")
+    np.random.seed(pseudo_e) # set seed for data bootstrapping
     
-    # assemble the bootstrapped datasets
-    # I think the validation set and the flow samples should NOT be bootstrapped
-    
-    # boostrapped alt set:
-    loc_alt_test_set = np.vstack([bootstrap_array(banded_alt_test_data["SR"]),bootstrap_array(banded_alt_test_data["SBL"]),bootstrap_array(banded_alt_test_data["SBH"])])
-    if args.use_extra_data:
-        loc_ROC_test_events_1 = np.vstack([bootstrap_array(banded_ROC_test_data["SR"]),bootstrap_array(banded_ROC_test_data["SBL"]),bootstrap_array(banded_ROC_test_data["SBH"])])
-    loc_ROC_test_samples_2 = np.vstack([bootstrap_array(train_samples_dict["SR_samples_ROC"]),bootstrap_array(train_samples_dict["SBL_samples_ROC"]),bootstrap_array(train_samples_dict["SBH_samples_ROC"])])
-    loc_SB_test_set = np.vstack([bootstrap_array(clean_data(banded_test_data["SBL"])),bootstrap_array(clean_data(banded_test_data["SBH"]))])
-    loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
-    loc_SR_data = clean_data(banded_test_data["SR"])
-    loc_SR_samples = clean_data(train_samples_dict["SR_samples"])
+    if pseudo_e == 0:
+        loc_alt_test_set = np.vstack([banded_alt_test_data["SR"],banded_alt_test_data["SBL"],banded_alt_test_data["SBH"]])
+        if args.use_extra_data:
+            loc_ROC_test_events_1 = np.vstack([banded_ROC_test_data["SR"],banded_ROC_test_data["SBL"],banded_ROC_test_data["SBH"]])
+        loc_ROC_test_samples_2 = np.vstack([train_samples_dict["SR_samples_ROC"],train_samples_dict["SBL_samples_ROC"],train_samples_dict["SBH_samples_ROC"]])
+        loc_SB_test_set = np.vstack([clean_data(banded_test_data["SBL"]),clean_data(banded_test_data["SBH"])])
+        loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
+        loc_SR_data = clean_data(banded_test_data["SR"])
+        loc_SR_samples = clean_data(train_samples_dict["SR_samples"])
+        
+    else:
+         #assemble the bootstrapped datasets
+        # I think the validation set and the flow samples should NOT be bootstrapped
+        loc_alt_test_set = np.vstack([bootstrap_array(banded_alt_test_data["SR"]),bootstrap_array(banded_alt_test_data["SBL"]),bootstrap_array(banded_alt_test_data["SBH"])])
+        if args.use_extra_data:
+            loc_ROC_test_events_1 = np.vstack([bootstrap_array(banded_ROC_test_data["SR"]),bootstrap_array(banded_ROC_test_data["SBL"]),bootstrap_array(banded_ROC_test_data["SBH"])])
+        loc_ROC_test_samples_2 = np.vstack([bootstrap_array(train_samples_dict["SR_samples_ROC"]),bootstrap_array(train_samples_dict["SBL_samples_ROC"]),bootstrap_array(train_samples_dict["SBH_samples_ROC"])])
+        loc_SB_test_set = np.vstack([bootstrap_array(clean_data(banded_test_data["SBL"])),bootstrap_array(clean_data(banded_test_data["SBH"]))])
+        loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
+        loc_SR_data = bootstrap_array(clean_data(banded_test_data["SR"]))
+        loc_SR_samples = clean_data(train_samples_dict["SR_samples"])
     
 
     if args.run_latent:
@@ -267,11 +277,10 @@ for pseudo_e in range(num_bootstraps):
         loc_alt_test_sets_data["ROC_data"] = loc_ROC_test_events_1
 
     
-    # make sure the input data is also bootstrapped
     if pseudo_e==0:
-        loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, bootstrap_array(loc_SR_data), loc_SB_test_set, n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=True, pdf=pp, take_ensemble_avg=True)
+        loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, loc_SR_data, loc_SB_test_set, n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=True, pdf=pp, take_ensemble_avg=True)
     else:
-        loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, bootstrap_array(loc_SR_data), loc_SB_test_set, n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=False, pdf=None, take_ensemble_avg=True)
+        loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, loc_SR_data, loc_SB_test_set, n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=False, pdf=None, take_ensemble_avg=True)
 
     all_test_data_splits[pseudo_e] = loc_test_data_splits
     all_scores_splits[pseudo_e] = loc_scores_splits

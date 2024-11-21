@@ -41,11 +41,8 @@ data_dict = {'SBL':[], 'SBH':[], 'SB':[], 'SBL_samples':[], 'SBH_samples':[], 'S
 
 for seed in seeds_list:
     path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_type}_{args.num_bins_SR}"
-    print(path_to_samples)
     with open(path_to_samples, "rb") as infile: 
         loc_data_dict = pickle.load(infile)
-        print(seed)
-        print(loc_data_dict["SR_samples"])
         for key in data_dict.keys():
             if "samples" in key or seed == 1:
                 data_dict[key].append(loc_data_dict[key])
