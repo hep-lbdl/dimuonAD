@@ -48,7 +48,8 @@ parser.add_argument("-run_jet", "--run_jet", action="store_true")
 parser.add_argument("-seeds", "--seeds", default="1", help="csv for seeds of flow models to use")
 parser.add_argument("-run_latent", "--run_latent", action="store_true")
 parser.add_argument('-use_extra_data', action="store_true", default=False)
-
+parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 
 args = parser.parse_args()
 
@@ -119,7 +120,7 @@ else:
 seeds_list = [int(x) for x in args.seeds.split(",")]
 train_samples_dict = {'SR_samples_ROC':[], 'SBL_samples_ROC':[], 'SBH_samples_ROC':[], 'SR_samples_validation':[], 'SR_samples':[]}
 for seed in seeds_list:
-    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples"
+    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_type}_{args.num_bins_SR}"
     with open(path_to_samples, "rb") as infile: 
         loc_train_samples_dict = pickle.load(infile)
         for key in train_samples_dict.keys():
@@ -165,6 +166,8 @@ n_features = len(feature_set) - 1
         
 # test set events: not used during flow training
 banded_test_data = assemble_banded_datasets(test_data_dict, feature_set, bands)
+
+
 
 # alt test set events
 banded_alt_test_data = assemble_banded_datasets(alt_test_data_dict, feature_set, bands)
@@ -281,12 +284,12 @@ for pseudo_e in range(num_bootstraps):
 print("Done training BDTs!")
 
 
-with open(f"{pickle_save_dir}/all_test_data_splits", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_test_data_splits_{args.bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
     pickle.dump(all_test_data_splits, ofile)
-with open(f"{pickle_save_dir}/all_alt_data_splits", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_alt_data_splits_{args.bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
     pickle.dump(all_alt_data_splits, ofile)
-with open(f"{pickle_save_dir}/all_scores_splits", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_scores_splits_{args.bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
     pickle.dump(all_scores_splits, ofile)
-with open(f"{pickle_save_dir}/all_alt_scores_splits", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_alt_scores_splits_{args.bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
     pickle.dump(all_alt_scores_splits, ofile)
       

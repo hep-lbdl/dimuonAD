@@ -124,7 +124,7 @@ def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR=6, binning="linea
         
     elif binning == "log":
         plot_bins_SR = np.logspace(np.log10(SR_left), np.log10(SR_right), num_bins_SR)
-        plot_centers_SR = [np.sqrt(plot_bins_SR[i]*plot_bins_SR[i+1]) for i in range(len(plot_bins_SR)-1)]
+        plot_centers_SR = np.array([np.sqrt(plot_bins_SR[i]*plot_bins_SR[i+1]) for i in range(len(plot_bins_SR)-1)])
         ratio = plot_bins_SR[1]/plot_bins_SR[0]
         
         # SBL
@@ -136,7 +136,7 @@ def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR=6, binning="linea
             current_endpoint = next_endpoint
         if plot_bins_left[0] < SB_left:
             plot_bins_left = plot_bins_left[1:]
-        plot_centers_left = [np.sqrt(plot_bins_left[i]*plot_bins_left[i+1]) for i in range(len(plot_bins_left)-1)]
+        plot_centers_left = np.array([np.sqrt(plot_bins_left[i]*plot_bins_left[i+1]) for i in range(len(plot_bins_left)-1)])
         
         # SBR
         current_endpoint = plot_bins_SR[-1]
@@ -147,10 +147,10 @@ def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR=6, binning="linea
             current_endpoint = next_endpoint
         if plot_bins_right[-1] > SB_right:
             plot_bins_right = plot_bins_right[:-1]
-        plot_centers_right = [np.sqrt(plot_bins_right[i]*plot_bins_right[i+1]) for i in range(len(plot_bins_right)-1)]
+        plot_centers_right = np.array([np.sqrt(plot_bins_right[i]*plot_bins_right[i+1]) for i in range(len(plot_bins_right)-1)])
     
     plot_centers_all = np.concatenate((plot_centers_left, plot_centers_SR, plot_centers_right))
-    plot_centers_SB =np.concatenate((plot_centers_left, plot_centers_right))
+    plot_centers_SB = np.concatenate((plot_centers_left, plot_centers_right))
     plot_bins_all = np.concatenate([plot_bins_left[:-1], plot_bins_SR, plot_bins_right[1:]])
     
     
@@ -161,8 +161,6 @@ def get_bins_for_scan(path_to_bin_defs_folder, window_index, scale_bins=False):
     """
     If this code is run on preprocessed data, then the bin definitions need to be modified with a scalar
     """
-    
-    print(f"Loading in bin definitions from {path_to_bin_defs_folder}/bin_definitions...")
     with open(f"{path_to_bin_defs_folder}/bin_definitions", "rb") as infile:
         bin_definitions = pickle.load(infile)
     window_bin_definitions = bin_definitions[window_index]
@@ -171,9 +169,9 @@ def get_bins_for_scan(path_to_bin_defs_folder, window_index, scale_bins=False):
     plot_bins_left = window_bin_definitions["SBL"]
     plot_bins_right = window_bin_definitions["SBH"]
     
-    plot_centers_SR = [np.sqrt(plot_bins_SR[i]*plot_bins_SR[i+1]) for i in range(len(plot_bins_SR)-1)]
-    plot_centers_left = [np.sqrt(plot_bins_left[i]*plot_bins_left[i+1]) for i in range(len(plot_bins_left)-1)]
-    plot_centers_right = [np.sqrt(plot_bins_right[i]*plot_bins_right[i+1]) for i in range(len(plot_bins_right)-1)]
+    plot_centers_SR = np.array([np.sqrt(plot_bins_SR[i]*plot_bins_SR[i+1]) for i in range(len(plot_bins_SR)-1)])
+    plot_centers_left = np.array([np.sqrt(plot_bins_left[i]*plot_bins_left[i+1]) for i in range(len(plot_bins_left)-1)])
+    plot_centers_right = np.array([np.sqrt(plot_bins_right[i]*plot_bins_right[i+1]) for i in range(len(plot_bins_right)-1)])
 
     plot_centers_all = np.concatenate((plot_centers_left, plot_centers_SR, plot_centers_right))
     plot_centers_SB = np.concatenate((plot_centers_left, plot_centers_right))

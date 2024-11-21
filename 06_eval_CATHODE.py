@@ -13,6 +13,8 @@ parser.add_argument("-p", "--particle_type")
 parser.add_argument("-seeds", "--seeds", default="1", help="csv for seeds of flow models to use")
 parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
 parser.add_argument("-run_jet", "--run_jet", action="store_true")
+parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 
 
 args = parser.parse_args()
@@ -35,13 +37,19 @@ flow_training_dir = os.path.join(f"{working_dir}/models", f"{project_id}/{args.f
 seeds_list = [int(x) for x in args.seeds.split(",")]
 data_dict = {'SBL':[], 'SBH':[], 'SB':[], 'SBL_samples':[], 'SBH_samples':[], 'SB_samples':[]}
 
+
+
 for seed in seeds_list:
-    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples"
+    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_type}_{args.num_bins_SR}"
+    print(path_to_samples)
     with open(path_to_samples, "rb") as infile: 
         loc_data_dict = pickle.load(infile)
+        print(seed)
+        print(loc_data_dict["SR_samples"])
         for key in data_dict.keys():
             if "samples" in key or seed == 1:
                 data_dict[key].append(loc_data_dict[key])
+
 
 for key in data_dict.keys():
     data_dict[key] = np.vstack(data_dict[key])
@@ -112,7 +120,7 @@ ks_dists_gaussians = get_kl_dist(np.random.normal(size = data_dict["SB"].shape),
 
 
 
-with open(f"flow_training_validations/{args.particle_type}_{args.feature_set}.txt", "w") as ofile:
+with open(f"flow_training_validations/{args.particle_type}_{args.feature_set}_{args.bkg_fit_type}_{args.num_bins_SR}.txt", "w") as ofile:
                                                   
     for i, ks_dist in enumerate(ks_dists_samples):
         ofile.write("Feature {i} KL div: {ks_dist}. (for gaussian: {ks_gauss})\n".format(i=i, ks_dist=ks_dist, ks_gauss=ks_dists_gaussians[i]))

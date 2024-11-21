@@ -21,6 +21,8 @@ parser.add_argument("-f", "--features")
 parser.add_argument("-pid", "--project_id", help='ID associated with the dataset')
 parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
 parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
+
 parser.add_argument("-c", "--configs")
 parser.add_argument('-seed', '--seed', default=1)
 parser.add_argument('--no_logit', action="store_true", default=False,
@@ -177,6 +179,7 @@ if not args.no_train:
 # plot losses
 train_losses = np.load(os.path.join(flow_training_dir, f"flow_train_losses.npy"))
 val_losses = np.load(os.path.join(flow_training_dir, f"flow_val_losses.npy"))
+print(train_losses)
 plot_ANODE_losses(train_losses, val_losses, yrange=None,
 savefig=os.path.join(flow_training_dir, f"loss_plot"),suppress_show=True)
 
@@ -225,7 +228,7 @@ else:
     print("Defining bins on the fly...")
     SB_left, SR_left = np.min(data_dict["SBL"][:,-1].reshape(-1)),  np.max(data_dict["SBL"][:,-1].reshape(-1))
     SR_right, SB_right = np.min(data_dict["SBH"][:,-1].reshape(-1)),  np.max(data_dict["SBH"][:,-1].reshape(-1))
-    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, binning="linear")
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, binning="linear", num_bins_SR=args.num_bins_SR)
     
 x = np.linspace(SB_left, SB_right, 100) # plot curve fit
 popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, bkg_fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
@@ -239,9 +242,11 @@ n_SR_samples = int(np.sum(bkg_fit_function(plot_centers_SR, *popt_0)))
 # make samples
 mass_samples = get_mass_samples(SR_left, SR_right, bkg_fit_type, n_SR_samples, popt_0)
 
+print(mass_samples)
+
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
-plt.savefig(f"{flow_training_dir}/bkg_fit")
+plt.savefig(f"{flow_training_dir}/bkg_fit_{bkg_fit_type}_{args.num_bins_SR}")
          
 
 
@@ -252,7 +257,7 @@ data_dict["SR_samples_validation"] = get_flow_samples(eval_model, mass_samples)
 data_dict["SR_samples_ROC"] =  get_flow_samples(eval_model, mass_samples) 
 
 
-with open(f"{flow_training_dir}/flow_samples", "wb") as ofile:
+with open(f"{flow_training_dir}/flow_samples_{bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
     pickle.dump(data_dict, ofile)
     
     
