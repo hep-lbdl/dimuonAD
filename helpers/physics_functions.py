@@ -95,9 +95,13 @@ def get_errors_bkg_fit_ratio(popt, pcov, xdata, bkg_fit_type):
 
     jac = numdifftools.core.Jacobian(bkg_fit_array)
     x_cov = np.dot(np.dot(jac(popt),pcov),jac(popt).T)
+
+    print(jac(popt).shape, pcov.shape, x_cov.shape)
+
     #For plot, take systematic error band as the diagonal of the covariance matrix
     y_unc=np.sqrt([row[i] for i, row in enumerate(x_cov)])
-    
+    print(y_unc.shape)
+
     return y_unc
 
 
@@ -387,3 +391,45 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
     plt.title(title, fontsize = 24)
     
 
+
+
+def test_statistic(masses, fit_function, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, pcov = None, ONE_SIDED = False, TWO_SIDED = False):
+
+    # Background Fit + Uncertainty
+    B_function = fit_function(plot_centers_SR, *popt) 
+
+    n = 1000
+    temp_params = np.random.multivariate_normal(popt, pcov, n)
+    y = np.array([fit_function(plot_centers_SR, *p) for p in temp_params])
+    B_error = np.std(y, axis = 0)
+
+    # Null Hypothesis: The data comes from a single bin with mean B, and the Gaussian error on that mean is B_error
+    total_B = sum(B_function)
+    total_B_error = np.sqrt(np.sum(B_error**2))
+
+    # Alternative hypothesis: The data comes from a single bin with mean S+B, and the Gaussian error on that mean is B_error
+    num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
+    total_S = num_total_in_SR - total_B
+
+    # If one-sided limits, then automatically return q_0 = 0
+    if ONE_SIDED and total_S < 0:
+        q_0 = 0
+        return q_0
+
+
+    # Calculate the log-likelihood of the data under the null hypothesis (B)
+    log_B = stats.poisson.logpmf(num_total_in_SR, total_B) - stats.norm.logpdf(total_B, total_B, total_B_error)
+
+    # Calculate the log-likelihood of the data under the alternative hypothesis (S+B)
+    log_S_plus_B = stats.poisson.logpmf(num_total_in_SR, total_S + total_B) - stats.norm.logpdf(total_B, total_S + total_B, total_B_error)
+
+    # Calculate the test statistic
+    q_0 = -2*(log_B - log_S_plus_B)
+
+    return q_0
+     
+
+
+
+
+    
