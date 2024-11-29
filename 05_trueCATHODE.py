@@ -20,7 +20,7 @@ parser.add_argument("-fid", "--flow_id")
 parser.add_argument("-f", "--features")
 parser.add_argument("-pid", "--project_id", help='ID associated with the dataset')
 parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
-parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 
 parser.add_argument("-c", "--configs")
@@ -33,6 +33,7 @@ parser.add_argument('--use_inner_bands', action="store_true", default=False)
 parser.add_argument('--use_extra_data', action="store_true", default=False)
 parser.add_argument('-no_train', '--no_train', action="store_true", default=False)
 parser.add_argument('-premade_bins', '--premade_bins', action="store_true", default=False, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
+parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
 
 
 
