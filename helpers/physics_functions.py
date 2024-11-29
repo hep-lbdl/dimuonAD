@@ -4,8 +4,9 @@ import numdifftools
 import pickle
 
 from scipy.special import erfcinv
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize
 from scipy import stats
+
 
 
 muon_mass = 0.1056583755 # GeV
@@ -95,9 +96,10 @@ def get_errors_bkg_fit_ratio(popt, pcov, xdata, bkg_fit_type):
 
     jac = numdifftools.core.Jacobian(bkg_fit_array)
     x_cov = np.dot(np.dot(jac(popt),pcov),jac(popt).T)
+
     #For plot, take systematic error band as the diagonal of the covariance matrix
     y_unc=np.sqrt([row[i] for i, row in enumerate(x_cov)])
-    
+
     return y_unc
 
 
@@ -387,3 +389,59 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
     plt.title(title, fontsize = 24)
     
 
+
+
+def calculate_test_statistic(masses, fit_function, fit_type, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, pcov, ONE_SIDED = True, verbose = False):
+
+    # ########## Expected Counts -- Needed to construct the likelihoods ##########
+
+    # Background Fit + Uncertainty
+    B_function = fit_function(plot_centers_SR, *popt) 
+
+    n = 1000
+    temp_params = np.random.multivariate_normal(popt, pcov, n)
+    y = np.array([fit_function(plot_centers_SR, *p) for p in temp_params])
+    B_error = get_errors_bkg_fit_ratio(popt, pcov, plot_centers_SR, fit_type) 
+
+    # Null Hypothesis: The data comes from a single bin with mean B, and the Gaussian error on that mean is B_error
+    total_B = sum(B_function)
+    total_B_error = np.sqrt(np.sum(B_error**2))
+
+    # Alternative hypothesis: The data comes from a single bin with mean S+B, and the Gaussian error on that mean is B_error
+    num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
+    total_S = num_total_in_SR - total_B
+    total_S_error = np.sqrt(total_B_error**2)
+
+    # If one-sided limits, then automatically return q_0 = 0
+    if ONE_SIDED and (total_S < 0 or total_B < 0):
+        q_0 = 0
+        return q_0
+
+
+    ########## Likelihoods ##########
+    def likelihood_function(b, s, N):
+        return -2 * (stats.poisson.logpmf(N, b + s) + stats.norm.logpdf(b, total_B, total_B_error))
+
+
+    # Null hypothesis: s = 0 with PROFILED b. We need to minimize the likelihood to get the best fit b given the total_B and total_B_error
+    def null_likelihood_function(bprime):
+        return likelihood_function(bprime, 0, num_total_in_SR)
+
+    minimization = minimize(null_likelihood_function, total_B, bounds = [(0, None)])
+    post_fit_B = minimization.x[0]
+    log_B = likelihood_function(post_fit_B, 0, num_total_in_SR)
+    if verbose:
+        print("pre_fit_B", total_B, " +- ", total_B_error   ,"post-fit B:", post_fit_B)
+
+    # Alternative hypothesis: s = total_S. No need to profile b, since the best fit will just be total_B, and the best fit for s is N - B
+    log_S_plus_B = likelihood_function(total_B, total_S, num_total_in_SR)
+
+    # Calculate the test statistic
+    q_0 = log_B - log_S_plus_B
+    return q_0
+     
+
+
+
+
+    

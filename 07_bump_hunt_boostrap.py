@@ -43,7 +43,8 @@ parser.add_argument("-p", "--particle_type")
 parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
 parser.add_argument("-ne", "--num_to_ensemble", default=10) # how many BDTs to train for a single pseudoexperiment
-parser.add_argument("-nb", "--num_bootstraps",default=20)  # how many pseudoexperiments to run
+parser.add_argument("-start", "--start", default=0, type=int)  # how many pseudoexperiments to run
+parser.add_argument("-stop", "--stop", default=1000, type=int) 
 parser.add_argument("-run_jet", "--run_jet", action="store_true")
 parser.add_argument("-seeds", "--seeds", default="1", help="csv for seeds of flow models to use")
 parser.add_argument("-run_latent", "--run_latent", action="store_true")
@@ -56,7 +57,6 @@ args = parser.parse_args()
 flow_id = args.flow_id
 particle_type = args.particle_type
 num_to_ensemble = int(args.num_to_ensemble)
-num_bootstraps = int(args.num_bootstraps)
 dir_id = args.dir_id
 
 if "upsilon" in particle_type:
@@ -220,19 +220,19 @@ bdt_hyperparams_dict = {
 
 n_folds = 5
 
-all_test_data_splits = {pseudo_e:{} for pseudo_e in range(num_bootstraps)}
-all_scores_splits = {pseudo_e:{} for pseudo_e in range(num_bootstraps)}
-all_alt_data_splits = {pseudo_e:{} for pseudo_e in range(num_bootstraps)}
-all_alt_scores_splits = {pseudo_e:{} for pseudo_e in range(num_bootstraps)}
+all_test_data_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
+all_scores_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
+all_alt_data_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
+all_alt_scores_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
 
 def bootstrap_array(data_array):
     indices_to_take = np.random.choice(range(data_array.shape[0]), size = data_array.shape[0], replace = True) 
     #return data_array[indices_to_take]
     return data_array
 
-for pseudo_e in range(num_bootstraps):
+for pseudo_e in range(args.start, args.stop):
     
-    print(f"On pseudoexperiment {pseudo_e+1} of {num_bootstraps}...")
+    print(f"On pseudoexperiment {pseudo_e} (of {args.start} to {args.stop-1})...")
     np.random.seed(pseudo_e) # set seed for data bootstrapping
     
     if pseudo_e == 0:
@@ -247,14 +247,16 @@ for pseudo_e in range(num_bootstraps):
         
     else:
          #assemble the bootstrapped datasets
-        # I think the validation set and the flow samples should NOT be bootstrapped
+        
         loc_alt_test_set = np.vstack([bootstrap_array(banded_alt_test_data["SR"]),bootstrap_array(banded_alt_test_data["SBL"]),bootstrap_array(banded_alt_test_data["SBH"])])
         if args.use_extra_data:
             loc_ROC_test_events_1 = np.vstack([bootstrap_array(banded_ROC_test_data["SR"]),bootstrap_array(banded_ROC_test_data["SBL"]),bootstrap_array(banded_ROC_test_data["SBH"])])
         loc_ROC_test_samples_2 = np.vstack([bootstrap_array(train_samples_dict["SR_samples_ROC"]),bootstrap_array(train_samples_dict["SBL_samples_ROC"]),bootstrap_array(train_samples_dict["SBH_samples_ROC"])])
         loc_SB_test_set = np.vstack([bootstrap_array(clean_data(banded_test_data["SBL"])),bootstrap_array(clean_data(banded_test_data["SBH"]))])
-        loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
         loc_SR_data = bootstrap_array(clean_data(banded_test_data["SR"]))
+        
+        # I think the validation set and the flow samples should NOT be bootstrapped
+        loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
         loc_SR_samples = clean_data(train_samples_dict["SR_samples"])
     
 
@@ -293,12 +295,12 @@ for pseudo_e in range(num_bootstraps):
 print("Done training BDTs!")
 
 
-with open(f"{pickle_save_dir}/all_test_data_splits_{args.bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_test_data_splits_{args.bkg_fit_type}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_test_data_splits, ofile)
-with open(f"{pickle_save_dir}/all_alt_data_splits_{args.bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_alt_data_splits_{args.bkg_fit_type}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_alt_data_splits, ofile)
-with open(f"{pickle_save_dir}/all_scores_splits_{args.bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_scores_splits_{args.bkg_fit_type}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_scores_splits, ofile)
-with open(f"{pickle_save_dir}/all_alt_scores_splits_{args.bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_alt_scores_splits_{args.bkg_fit_type}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_alt_scores_splits, ofile)
       
