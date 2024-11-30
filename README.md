@@ -18,4 +18,21 @@ If using CMS Simulation, the script `01_process_unskimmed_root_files.py` should 
 ### Calculate additional features and compile
 The notebook `02_process_nanoAOD_skimmed.ipynb` compiles all analysis objects and root files into a single pickle array. Loose event filters and selection cuts should be applied at this level (e.g. PFC ID criteria, number of PFCs, number of jets). This notebook can also be used to quickly visualize analysis object distributions.
 
-## Analysis Preparation
+## Analysis preparation
+Next, analysis-dependent cuts and modifications need to be applied to the data. These may involve choosing signal region(s) (SR) and sideband region(s) (SB), applying specific observable cuts (such as the anti-isolation cut for the $\Upsilon$ study (cite)), or injecting a BSM signal for setting limits (cite). Finally, a smaller set of analysis features can be specified. 
+
+For the ML study in particular, the data must be further preprocessed before being fed into the CATHODE-inspired normalizing flow architecture. We first logit-transform all the features (except the dimuon invariant mass, which is standard-scaled), then min-max scale them to the range (0, 1). This transformation was found to be effective for the normalizing flow training. 
+
+- In ``, we provide a notebook that applies the cuts for a single choice of signal region (SR) and sidebands (SB)
+  - In ``, we provide a similar notebook but multiple choices of SR-SB choices.
+- In ``, we provide a notebook that injects a particular BSM signal.
+
+## ML study: network training
+05, 06
+07
+
+## Compilation
+08
+
+## Plotting
+09
