@@ -16,7 +16,7 @@ import os
 from matplotlib.backends.backend_pdf import PdfPages
 import pickle
 
-from helpers.data_transforms import inverse_transform, clean_data
+from helpers.data_transforms import clean_data
 from helpers.BDT import *
 from helpers.physics_functions import *
 from helpers.plotting import hist_all_features_array
@@ -227,8 +227,7 @@ all_alt_scores_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop
 
 def bootstrap_array(data_array):
     indices_to_take = np.random.choice(range(data_array.shape[0]), size = data_array.shape[0], replace = True) 
-    #return data_array[indices_to_take]
-    return data_array
+    return data_array[indices_to_take]
 
 for pseudo_e in range(args.start, args.stop):
     
@@ -236,6 +235,7 @@ for pseudo_e in range(args.start, args.stop):
     np.random.seed(pseudo_e) # set seed for data bootstrapping
     
     if pseudo_e == 0:
+        print("Not bootstrapping data")
         loc_alt_test_set = np.vstack([banded_alt_test_data["SR"],banded_alt_test_data["SBL"],banded_alt_test_data["SBH"]])
         if args.use_extra_data:
             loc_ROC_test_events_1 = np.vstack([banded_ROC_test_data["SR"],banded_ROC_test_data["SBL"],banded_ROC_test_data["SBH"]])
@@ -247,7 +247,7 @@ for pseudo_e in range(args.start, args.stop):
         
     else:
          #assemble the bootstrapped datasets
-        
+        print("Bootstrapping data")
         loc_alt_test_set = np.vstack([bootstrap_array(banded_alt_test_data["SR"]),bootstrap_array(banded_alt_test_data["SBL"]),bootstrap_array(banded_alt_test_data["SBH"])])
         if args.use_extra_data:
             loc_ROC_test_events_1 = np.vstack([bootstrap_array(banded_ROC_test_data["SR"]),bootstrap_array(banded_ROC_test_data["SBL"]),bootstrap_array(banded_ROC_test_data["SBH"])])
@@ -258,6 +258,9 @@ for pseudo_e in range(args.start, args.stop):
         # I think the validation set and the flow samples should NOT be bootstrapped
         loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
         loc_SR_samples = clean_data(train_samples_dict["SR_samples"])
+        
+    print(banded_test_data["SR"][:10,-1])
+    print(loc_SR_data[:10,-1])
     
 
     if args.run_latent:

@@ -1,22 +1,30 @@
 import uproot
 import numpy as np
 import argparse
-import pickle
-import json
 import os
+import pickle
+import yaml
+
 
 """
 "Process" simulation, i.e. any files that do not need to be skimmed
 """
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-start", "--start", help="increase output verbosity")
-parser.add_argument("-stop", "--stop", help="increase output verbosity")
-parser.add_argument("-code", "--code", help="increase output verbosity")
+parser.add_argument("-start", "--start", default=0, type=int)
+parser.add_argument("-stop", "--stop", default=28, type=int)
+parser.add_argument("-code", "--code")
 
 args = parser.parse_args()
 
-path_to_output = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/data/{args.code}/"
+
+with open("workflow.yaml", "r") as file:
+    workflow = yaml.safe_load(file)
+    
+path_to_root_file_dir = workflow["file_paths"]["data_storage_dir"]
+working_dir = workflow["file_paths"]["working_dir"]
+
+path_to_output = f"{path_to_root_file_dir}/precompiled_data/{args.code}/"
 
 if not os.path.exists(path_to_output):
     os.makedirs(path_to_output)
@@ -24,20 +32,20 @@ if not os.path.exists(path_to_output):
 # SM, SIM
 # https://opendata.cern.ch/record/44211, 49 files
 if args.code == "SM_SIM":
-    paths_to_root_file_list = ["/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_50000_file_index.txt",
-                               "/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_40000_file_index.txt",
-                               "/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_2520000_file_index.txt",
-                               "/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_2430000_file_index.txt"]
+    paths_to_root_file_list = [f"{working_dir}/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_50000_file_index.txt",
+                               f"{working_dir}/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_40000_file_index.txt",
+                               f"{working_dir}/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_2520000_file_index.txt",
+                               f"{working_dir}/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_MuMuJet_mll_0to60_LO_EMEnriched_TuneCP5_13TeV-amcatnlo-pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_2430000_file_index.txt"]
 
 #  USYGluGluToHToAA_AToMuMu_AToBB_M-40
 # https://opendata.cern.ch/record/65045, 11 files
 elif args.code == "BSM_HAA":
-    paths_to_root_file_list = ["/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_SUSYGluGluToHToAA_AToMuMu_AToBB_M-40_TuneCP5_13TeV_madgraph_pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_40000_file_index.txt"]
+    paths_to_root_file_list = [f"{working_dir}/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_SUSYGluGluToHToAA_AToMuMu_AToBB_M-40_TuneCP5_13TeV_madgraph_pythia8_NANOAODSIM_106X_mcRun2_asymptotic_v17-v1_40000_file_index.txt"]
 
 #  ggXToYY_YToMuMu_M22p5
 # https://opendata.cern.ch/record/36434, 2 files
 elif args.code == "BSM_XYY":
-    paths_to_root_file_list = ["/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_ggXToYY_YToMuMu_M22p5_JPCZeroPlusPlus_TuneCP5_13TeV-pythia8-JHUGen_NANOAODSIM_106X_mcRun2_asymptotic_v17-v2_40000_file_index.txt", "/global/homes/r/rmastand/dimuonAD/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_ggXToYY_YToMuMu_M22p5_JPCZeroPlusPlus_TuneCP5_13TeV-pythia8-JHUGen_NANOAODSIM_106X_mcRun2_asymptotic_v17-v2_2430000_file_index.txt"]
+    paths_to_root_file_list = [f"{working_dir}/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_ggXToYY_YToMuMu_M22p5_JPCZeroPlusPlus_TuneCP5_13TeV-pythia8-JHUGen_NANOAODSIM_106X_mcRun2_asymptotic_v17-v2_40000_file_index.txt", f"{working_dir}/file_sources/CMS_mc_RunIISummer20UL16NanoAODv9_ggXToYY_YToMuMu_M22p5_JPCZeroPlusPlus_TuneCP5_13TeV-pythia8-JHUGen_NANOAODSIM_106X_mcRun2_asymptotic_v17-v2_2430000_file_index.txt"]
     
 
 
@@ -46,7 +54,6 @@ for path in paths_to_root_file_list:
     with open(path, "r") as infile:
         root_file_list = infile.readlines()
         list_of_root_files += root_file_list
-        
         
 num_jets_to_save = 3
         
