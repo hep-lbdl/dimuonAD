@@ -40,7 +40,7 @@ with open(configs_path, "r") as file:
 parser = argparse.ArgumentParser()
 parser.add_argument("-fid", "--flow_id")
 parser.add_argument("-p", "--particle_type")
-parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
+parser.add_argument("-did", "--dir_id", help='ID associated with the directory')
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
 parser.add_argument("-ne", "--num_to_ensemble", default=10) # how many BDTs to train for a single pseudoexperiment
 parser.add_argument("-start", "--start", default=0, type=int)  # how many pseudoexperiments to run
@@ -84,17 +84,17 @@ data_dict = {}
 
 
 if args.train_samesign:
-    train_data_id = "_samesign"
+    train_data_id = "_SS"
 else:
-    train_data_id = ""
+    train_data_id = "_OS"
 
 # train on opp sign means alt test set is samesign
-if train_data_id == "": 
-    alt_test_data_id = "_samesign"
-    train_data_id_title = "_oppsign"
-elif train_data_id == "_samesign": 
-    alt_test_data_id = ""
-    train_data_id_title = "_samesign"
+if train_data_id == "_OS": 
+    alt_test_data_id = "_SS"
+    train_data_id_title = "_OS"
+elif train_data_id == "_SS": 
+    alt_test_data_id = "_OS"
+    train_data_id_title = "_SS"
     
     
 working_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/{dir_id}/"
@@ -284,6 +284,7 @@ for pseudo_e in range(args.start, args.stop):
     
     if pseudo_e==0:
         loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, loc_SR_data, loc_SB_test_set, n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=True, pdf=pp, take_ensemble_avg=True)
+        pp.close()
     else:
         loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, loc_SR_data, loc_SB_test_set, n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=False, pdf=None, take_ensemble_avg=True)
 

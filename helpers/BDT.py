@@ -193,11 +193,11 @@ def run_BDT_bump_hunt(flow_samples_SR, data_samples_SR, data_samples_SB, num_fol
                 plt.title(f"Fold {i_fold}")
         
         if visualize:
-            #plt.legend()
             if pdf is not None:
                 pdf.savefig()
             else:
                 plt.show()
+                
         
             
             
