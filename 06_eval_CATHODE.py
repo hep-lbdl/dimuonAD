@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-feat", "--feature_set")
 parser.add_argument("-p", "--particle_type")
 parser.add_argument("-seeds", "--seeds", default="1", help="csv for seeds of flow models to use")
-parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
+parser.add_argument("-did", "--dir_id", help='ID associated with the directory')
 parser.add_argument("-run_jet", "--run_jet", action="store_true")
 parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
@@ -50,7 +50,7 @@ for seed in seeds_list:
 
 for key in data_dict.keys():
     data_dict[key] = np.vstack(data_dict[key])
-    print(key, data_dict[key].shape)
+
 
 
 n_estimators = 100 # number of boosting stages

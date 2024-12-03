@@ -17,9 +17,9 @@ from helpers.flow_sampling import *
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-fid", "--flow_id")
-parser.add_argument("-f", "--features")
+parser.add_argument("-feat", "--features")
 parser.add_argument("-pid", "--project_id", help='ID associated with the dataset')
-parser.add_argument("-did", "--dir_id", default='logit_08_22', help='ID associated with the directory')
+parser.add_argument("-did", "--dir_id", help='ID associated with the directory')
 
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 
@@ -27,7 +27,7 @@ parser.add_argument("-c", "--configs")
 parser.add_argument('-seed', '--seed', default=1)
 parser.add_argument('--no_logit', action="store_true", default=False,
                     help='Turns off the logit transform.')
-parser.add_argument('--epochs', default=400)
+parser.add_argument('--epochs', default=400, type=int)
 parser.add_argument('--verbose', default=False)
 parser.add_argument('--use_inner_bands', action="store_true", default=False)
 parser.add_argument('--use_extra_data', action="store_true", default=False)
@@ -242,12 +242,10 @@ n_SR_samples = int(np.sum(bkg_fit_function(plot_centers_SR, *popt_0)))
 # make samples
 mass_samples = get_mass_samples(SR_left, SR_right, bkg_fit_type, n_SR_samples, popt_0)
 
-
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
 plt.savefig(f"{flow_training_dir}/bkg_fit_{bkg_fit_type}_{args.num_bins_SR}")
          
-
 
 data_dict["SR_samples"] =  get_flow_samples(eval_model, mass_samples) 
 # generate more samples to determine score cutoff at fixed FPR

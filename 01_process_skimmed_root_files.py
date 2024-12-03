@@ -43,7 +43,7 @@ num_jets_to_save = 3
         
 for i in range(args.start, args.stop):
     
-    loc_root_file_string = loc_root_file_string = (path_to_root_input+list_of_root_files[i].strip().split("/")[-1])[:-5]+"_Skim.root"
+    loc_root_file_string = (path_to_root_input+list_of_root_files[i].strip().split("/")[-1])[:-5]+"_Skim.root"
     print("Analyzing file", i, loc_root_file_string)
 
     loc_root_file = uproot.open(loc_root_file_string)
@@ -63,6 +63,7 @@ for i in range(args.start, args.stop):
     muon_vars += triggers_HLT
     #electron_vars = ["Electron_pt", "Electron_eta", "Electron_phi", "Electron_charge"]
     jet_vars = ["Jet_pt", "Jet_eta", "Jet_phi", "Jet_mass", "Jet_nConstituents", "Jet_btagCSVV2", "Jet_btagDeepB", "Jet_btagDeepFlavB", "MET_pt", "MET_sumEt"]
+    print(events.keys())
     
     all_muon_data, all_electron_data = {}, {}
     all_jet_data = {}
@@ -76,7 +77,7 @@ for i in range(args.start, args.stop):
     for jv in jet_vars:
         all_jet_data[jv] = events[jv].array()
         
-        
+    """
     # save out
     with open(f"{path_to_output}/all_mu_{i}", "wb") as output_file:
         pickle.dump(all_muon_data, output_file)
@@ -86,5 +87,6 @@ for i in range(args.start, args.stop):
 
     with open(f"{path_to_output}/all_jet_{i}", "wb") as output_file:
         pickle.dump(all_jet_data, output_file)
+    """
 
 print("All done!")
