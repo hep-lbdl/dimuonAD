@@ -4,10 +4,16 @@ file_paths:
 
 window_definitions:
     upsilon: 
-        SB_left: 7.8
+        SB_left: 5
         SR_left: 9
         SR_right: 10.6
-        SB_right: 15
+        SB_right: 16
+    eta:
+        SB_left: 0.3
+        SR_left: 0.525
+        SR_right: 0.569
+        SB_right: 0.72
+
 
 
 
@@ -26,14 +32,6 @@ feature_sets:
     single_3: 
         - mu0_ip3d
         - mu1_ip3d
-        - mu0_jetiso
-        - mu1_jetiso
-    single_4: 
-        - mu0_ip3d
-        - mu1_ip3d
-    single_5: 
-        - mu0_jetiso
-        - mu1_jetiso
     double_0: 
         - dimu_pt
         - dimu_eta
@@ -48,16 +46,10 @@ feature_sets:
     mix_0: 
         - dimu_pt
         - mu0_iso04
-        - mu1_iso04     
+        - mu1_iso04       
     mix_2: 
         - dimu_pt
         - mu0_ip3d
         - mu1_ip3d
 
-
-eta:
-    SB_left: 0.3
-    SR_left: 0.525
-    SR_right: 0.569
-    SB_right: 0.72
 
