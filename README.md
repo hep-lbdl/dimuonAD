@@ -34,12 +34,33 @@ In addition, a smaller set of analysis features (e.g. the ``auxiliary features")
 For the ML study in particular, the data must be further preprocessed before being fed into the CATHODE-inspired normalizing flow architecture. We first logit-transform all the features (except the dimuon invariant mass, which is standard-scaled), then min-max scale them to the range (0, 1). This transformation was found to be effective for the normalizing flow training. 
 
 In `04_preprocess_data_lowmass`, we provide a notebook that applies the cuts for a single choice of signal region (SR) and sidebands (SB).
-  
+
+At this point, it is helpful to specify a few keywords to identify the specific project / features of interest. **(should these be added to the workflow??)**
+- `run_id`:
+- `project_id`:
+- `particle_id`:
+- `analysis_test_id`:
+- `feature_id`:
+- `feature_list`:
+
 ## ML study: network training
 
 Once some version of notebook `04` has been run, use the script `05_trueCATHODE.py` to train the normalizing flow on the auxiliary features, conditioned on the invariant mass.
-05, 06
-07
+
+Helpful keywords:
+- `train_samesign`
+- `train_jet`
+- `bkg_fit_type`
+- `num_bins_SR`
+- `feats`
+
+You can specify `epochs` and `batch_size` as an argument to the script. For larger flow architecture changes, create a new config file in the `configs/<your_config.yml>` folder and pass the file with `-c your_config.yml`.
+
+To regenerate flow samples with a different choice of SR binnins or background polynomial fit, use the `-no_train` flag.
+
+Check the flow performance in the SB with `06_eval_CATHODE.py`
+
+`07_bump_hunt_boostrap.py`
 
 ## Compilation
 08
