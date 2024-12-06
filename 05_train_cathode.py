@@ -6,6 +6,7 @@ import os
 import torch
 import argparse
 import yaml
+from numba import cuda
 
 from helpers.density_estimator import DensityEstimator
 from helpers.ANODE_training_utils import train_ANODE, plot_ANODE_losses
@@ -16,84 +17,86 @@ from helpers.evaluation import *
 from helpers.flow_sampling import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-fid", "--flow_id")
-parser.add_argument("-feat", "--features")
-parser.add_argument("-pid", "--project_id", help='ID associated with the dataset')
-parser.add_argument("-did", "--dir_id", help='ID associated with the directory')
 
-parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
+# project-specific arguments
+parser.add_argument("-run", "--run_id", help='ID associated with the directory')
+parser.add_argument("-project", "--project_id", help='ID associated with the dataset')
+parser.add_argument("-particle", "--particle_id", help='ID associated with the dataset')
+parser.add_argument("-analysis", "--analysis_test_id", help='ID associated with the dataset')
 
-parser.add_argument("-c", "--configs")
-parser.add_argument('-seed', '--seed', default=1)
-parser.add_argument('--no_logit', action="store_true", default=False,
-                    help='Turns off the logit transform.')
-parser.add_argument('--epochs', default=400, type=int)
-parser.add_argument('--verbose', default=False)
-parser.add_argument('--use_inner_bands', action="store_true", default=False)
-parser.add_argument('--use_extra_data', action="store_true", default=False)
-parser.add_argument('-no_train', '--no_train', action="store_true", default=False)
-parser.add_argument('-premade_bins', '--premade_bins', action="store_true", default=False, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
+# data-specific arguments
+parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
+parser.add_argument("-train_jet", "--train_jet", action="store_true")
 parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
+parser.add_argument('-premade_bins', '--premade_bins', action="store_true", default=False, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
+parser.add_argument('--use_inner_bands', action="store_true", default=False)
+#parser.add_argument('--use_extra_data', action="store_true", default=False)
 
+# flow-specific arguments
+parser.add_argument("-fid", "--feature_id")
+parser.add_argument("-feats", "--feature_list")
+parser.add_argument('-seed', '--seed', default=1)
 
-
-batch_size = 256
+# training
+parser.add_argument("-c", "--configs", default="CATHODE_8")
+parser.add_argument('--epochs', default=400, type=int)
+parser.add_argument('--batch_size', default=256, type=int)
+parser.add_argument('--verbose', default=False)
+parser.add_argument('--no_logit', action="store_true", default=False,help='Turns off the logit transform.')
+parser.add_argument('-no_train', '--no_train', action="store_true", default=False)
 
 args = parser.parse_args()
 
-print(f"Flow id: {args.flow_id}")
-print(f"Project id: {args.project_id}")
+
+bkg_fit_type = args.bkg_fit_type
+if bkg_fit_type == "cubic": bkg_fit_function = bkg_fit_cubic
+elif bkg_fit_type == "quintic": bkg_fit_function = bkg_fit_quintic
+elif bkg_fit_type == "septic": bkg_fit_function = bkg_fit_septic
+
+use_inner_bands = args.use_inner_bands
+if use_inner_bands:bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
+else: bands = ["SBL", "SR", "SBH"]
+
+if args.train_samesign: samesign_id = "SS"
+else: samesign_id = "OS"
+if args.train_jet: jet_id = "jet"
+else: jet_id = "nojet"
+    
+feature_set = [f for f in args.feature_list.split(",")]
+print(f"Using feature set {feature_set}")
+num_features = len(feature_set) - 1 # context doesn't count
+
+
+
+print(f"Feature id: {args.feature_id}")
+print(f"Analysis: {args.project_id}, {args.particle_id}, {args.analysis_test_id}")
 print(f"Configs: {args.configs}")
 
+import yaml
+with open("workflow.yaml", "r") as file:
+    workflow = yaml.safe_load(file)
 
-
-
-from numba import cuda 
-
-
-
-seed = int(args.seed)
+working_dir = workflow["file_paths"]["working_dir"]
+path_to_config_file = f"{working_dir}/configs/{args.configs}.yml"
+processed_data_dir = workflow["file_paths"]["data_storage_dir"] +f"/projects/{args.run_id}/processed_data/"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] + f"/projects/{args.run_id}/models/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{samesign_id}_{jet_id}/{args.feature_id}/{args.configs}/seed{args.seed}"
+os.makedirs(flow_training_dir, exist_ok=True)
 
 
 # computing
-path_to_config_file = f"configs/{args.configs}.yml"
-
 device = cuda.get_current_device()
 device.reset()
-
-# set the number of threads that pytorch will use
 torch.set_num_threads(2)
-
-# set gpu device
 device = torch.device( "cuda" if torch.cuda.is_available() else "cpu")
 print( "Using device: " + str( device ), flush=True)
-
+seed = int(args.seed)
 torch.manual_seed(seed)
 np.random.seed(seed)
 
 """
 LOAD IN DATA
 """
-
-use_inner_bands = args.use_inner_bands
-bkg_fit_type = args.bkg_fit_type
-if bkg_fit_type == "cubic": bkg_fit_function = bkg_fit_cubic
-elif bkg_fit_type == "quintic": bkg_fit_function = bkg_fit_quintic
-elif bkg_fit_type == "septic": bkg_fit_function = bkg_fit_septic
-
-
-if use_inner_bands:
-    bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
-else:
-    bands = ["SBL", "SR", "SBH"]
-    
-
-working_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/{args.dir_id}/"
-
-feature_set = [f for f in args.features.split(",")]
-print(f"Using feature set {feature_set}")
-num_features = len(feature_set) - 1 # context doesn't count
-
 
 data_dict = {}
 
@@ -103,13 +106,13 @@ LOAD IN DEDICATED TRAIN DATA FOR FLOW
 """
 
 # dataset for the bump hunt only
-with open(f"{working_dir}/processed_data/{args.project_id}_test_band_data", "rb") as ifile:
+with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{samesign_id}_{jet_id}_test_band_data", "rb") as ifile:
     proc_dict_s_inj_test = pickle.load(ifile)
-
+"""
 if args.use_extra_data:
     print("Using supplementary data...")
     # dataset just for flow training (extra data)
-    with open(f"{working_dir}/processed_data/{args.project_id}_train_band_data", "rb") as ifile:
+    with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.panalysis_test_id}_{samesign_id}_{jet_id}_train_band_data", "rb") as ifile:
         proc_dict_s_inj_train = pickle.load(ifile)
 
     for b in bands:
@@ -118,15 +121,14 @@ if args.use_extra_data:
         for i, feat in enumerate(feature_set):
             data_dict[b][:,i] = np.vstack([proc_dict_s_inj_train[b]["s_inj_data"][feat].reshape(-1,1),proc_dict_s_inj_test[b]["s_inj_data"][feat].reshape(-1,1)]).reshape(-1,)
         print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
-  
+"""  
     
-else:
-    for b in bands:
-        num_events_band = proc_dict_s_inj_test[b]["s_inj_data"]["dimu_mass"].shape[0]
-        data_dict[b] = np.empty((num_events_band, num_features+1))
-        for i, feat in enumerate(feature_set):
-            data_dict[b][:,i] = proc_dict_s_inj_test[b]["s_inj_data"][feat].reshape(-1,1).reshape(-1,)
-        print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
+for b in bands:
+    num_events_band = proc_dict_s_inj_test[b]["s_inj_data"]["dimu_mass"].shape[0]
+    data_dict[b] = np.empty((num_events_band, num_features+1))
+    for i, feat in enumerate(feature_set):
+        data_dict[b][:,i] = proc_dict_s_inj_test[b]["s_inj_data"][feat].reshape(-1,1).reshape(-1,)
+    print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
 
 
 print()
@@ -152,15 +154,13 @@ print(f"SBL val data has shape {SBL_data_val.shape}.")
 print(f"SBH train data has shape {SBH_data_train.shape}.")
 print(f"SBH val data has shape {SBH_data_val.shape}.")
 
-train_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_train, SBH_data_train]), batch_size=batch_size, shuffle=True, num_workers = 8, pin_memory = True)
-val_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_val, SBH_data_val]), batch_size=batch_size, shuffle=False, num_workers = 8, pin_memory = True)
+train_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_train, SBH_data_train]), batch_size=args.batch_size, shuffle=True, num_workers = 8, pin_memory = True)
+val_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_val, SBH_data_val]), batch_size=args.batch_size, shuffle=False, num_workers = 8, pin_memory = True)
     
 
 """
 CREATE THE FLOW
 """
-flow_training_dir = os.path.join(f"{working_dir}/models", f"{args.project_id}/{args.flow_id}/{args.configs}/seed{args.seed}")
-os.makedirs(flow_training_dir, exist_ok=True)
 
 anode = DensityEstimator(path_to_config_file, num_features, device=device,
                          verbose=args.verbose, bound=args.no_logit)
@@ -182,8 +182,6 @@ train_losses = np.load(os.path.join(flow_training_dir, f"flow_train_losses.npy")
 val_losses = np.load(os.path.join(flow_training_dir, f"flow_val_losses.npy"))
 plot_ANODE_losses(train_losses, val_losses, yrange=None,
 savefig=os.path.join(flow_training_dir, f"loss_plot"),suppress_show=True)
-
-
 
 """
 MAKE SAMPLES
@@ -220,7 +218,7 @@ masses_to_fit = np.hstack((data_dict["SBL"][:,-1], data_dict["SBH"][:,-1]))
 
 if args.premade_bins:
     window_index = int(args.project_id.split("_")[1])
-    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins_for_scan(f"{working_dir}/processed_data", window_index, scale_bins = True)
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins_for_scan(processed_data_dir, window_index, scale_bins = True)
     SR_left, SR_right = plot_bins_SR[0], plot_bins_SR[-1]
     SB_left, SB_right = plot_bins_left[0], plot_bins_right[-1]
 else:

@@ -7,36 +7,51 @@ import os
 from helpers.evaluation import *
 from helpers.data_transforms import clean_data
 
+
 parser = argparse.ArgumentParser()
-parser.add_argument("-feat", "--feature_set")
-parser.add_argument("-p", "--particle_type")
-parser.add_argument("-seeds", "--seeds", default="1", help="csv for seeds of flow models to use")
-parser.add_argument("-did", "--dir_id", help='ID associated with the directory')
-parser.add_argument("-run_jet", "--run_jet", action="store_true")
+
+# project-specific arguments
+parser.add_argument("-run", "--run_id", help='ID associated with the directory')
+parser.add_argument("-project", "--project_id", help='ID associated with the dataset')
+parser.add_argument("-particle", "--particle_id", help='ID associated with the dataset')
+parser.add_argument("-analysis", "--analysis_test_id", help='ID associated with the dataset')
+
+# data-specific arguments
+parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
+parser.add_argument("-train_jet", "--train_jet", action="store_true")
 parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
+parser.add_argument('--use_inner_bands', action="store_true", default=False)
 
+# flow-specific arguments
+parser.add_argument("-fid", "--feature_id")
+parser.add_argument('-seeds', '--seeds', default="1")
+parser.add_argument("-c", "--configs", default="CATHODE_8")
 
 args = parser.parse_args()
 
 
-bands = ["SBL", "SR", "SBH"]
-data_dict = {}
+use_inner_bands = args.use_inner_bands
+if use_inner_bands: data_dict = {'SBL':[], 'SBH':[], 'SB':[], 'SBL_samples':[], 'SBH_samples':[], 'SB_samples':[],'IBL':[], 'IBH':[], 'IB':[], 'IBL_samples':[], 'IBH_samples':[], 'IB_samples':[]}
+else: data_dict = {'SBL':[], 'SBH':[], 'SB':[], 'SBL_samples':[], 'SBH_samples':[], 'SB_samples':[]}
 
+if args.train_samesign: samesign_id = "SS"
+else: samesign_id = "OS"
+if args.train_jet: jet_id = "jet"
+else: jet_id = "nojet"
 
-working_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/{args.dir_id}/"
-if args.run_jet:
-    project_id = f"lowmass_{args.particle_type}_jet"
-else:
-    project_id = f"lowmass_{args.particle_type}_nojet"
-config_id = "CATHODE_8"
+import yaml
+with open("workflow.yaml", "r") as file:
+    workflow = yaml.safe_load(file)
 
-flow_training_dir = os.path.join(f"{working_dir}/models", f"{project_id}/{args.feature_set}/{config_id}")
+working_dir = workflow["file_paths"]["working_dir"]
+path_to_config_file = f"{working_dir}/configs/{args.configs}.yml"
+processed_data_dir = workflow["file_paths"]["data_storage_dir"] +f"/projects/{args.run_id}/processed_data/"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] + f"/projects/{args.run_id}/models/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{samesign_id}_{jet_id}/{args.feature_id}/{args.configs}/"
+
 
 # load in all the flow models across different seeds
 seeds_list = [int(x) for x in args.seeds.split(",")]
-data_dict = {'SBL':[], 'SBH':[], 'SB':[], 'SBL_samples':[], 'SBH_samples':[], 'SB_samples':[]}
-
 
 
 for seed in seeds_list:
@@ -47,10 +62,8 @@ for seed in seeds_list:
             if "samples" in key or seed == 1:
                 data_dict[key].append(loc_data_dict[key])
 
-
 for key in data_dict.keys():
     data_dict[key] = np.vstack(data_dict[key])
-
 
 
 n_estimators = 100 # number of boosting stages
@@ -116,8 +129,7 @@ ks_dists_samples = get_kl_dist(data_dict["SB"], data_dict["SB_samples"])
 ks_dists_gaussians = get_kl_dist(np.random.normal(size = data_dict["SB"].shape), np.random.normal(size = data_dict["SB_samples"].shape))
 
 
-
-with open(f"flow_training_validations/{args.particle_type}_{args.feature_set}_{args.bkg_fit_type}_{args.num_bins_SR}.txt", "w") as ofile:
+with open(f"flow_training_validations/{args.particle_id}_{args.analysis_test_id}_{samesign_id}_{jet_id}_{args.feature_id}_{args.bkg_fit_type}_{args.num_bins_SR}.txt", "w") as ofile:
                                                   
     for i, ks_dist in enumerate(ks_dists_samples):
         ofile.write("Feature {i} KL div: {ks_dist}. (for gaussian: {ks_gauss})\n".format(i=i, ks_dist=ks_dist, ks_gauss=ks_dists_gaussians[i]))

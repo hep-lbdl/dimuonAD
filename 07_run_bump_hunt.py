@@ -22,89 +22,70 @@ from helpers.physics_functions import *
 from helpers.plotting import hist_all_features_array
 from helpers.evaluation import assemble_banded_datasets, convert_to_latent_space_true_cathode, get_median_percentiles
 
+parser = argparse.ArgumentParser()
+
+# project-specific arguments
+parser.add_argument("-run", "--run_id", help='ID associated with the directory')
+parser.add_argument("-project", "--project_id", help='ID associated with the dataset')
+parser.add_argument("-particle", "--particle_id", help='ID associated with the dataset')
+parser.add_argument("-analysis", "--analysis_test_id", help='ID associated with the dataset')
+
+# data-specific arguments
+parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
+parser.add_argument("-train_jet", "--train_jet", action="store_true")
+parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
+
+# flow-specific arguments
+parser.add_argument("-fid", "--feature_id")
+parser.add_argument('-seeds', '--seeds', default="1")
+parser.add_argument("-c", "--configs", default="CATHODE_8")
+
+# BDT-specific arguments
+parser.add_argument("-ne", "--num_to_ensemble", default=10, type=int) # how many BDTs to train for a single pseudoexperiment
+parser.add_argument("-nf", "--n_folds", default=5, type=int) # how many BDTs to train for a single pseudoexperiment
+parser.add_argument("-start", "--start", default=0, type=int)  # how many pseudoexperiments to run
+parser.add_argument("-stop", "--stop", default=1000, type=int) 
+parser.add_argument("-run_latent", "--run_latent", action="store_true")
+parser.add_argument("-use_extra_data", "--use_extra_data", action="store_true")
+
+args = parser.parse_args()
 
 device = "cpu"
 
 import yaml
 with open("workflow.yaml", "r") as file:
     workflow = yaml.safe_load(file)
-     
-config_id = "CATHODE_8"
-project_id = "lowmass"
 
-configs_path = f"configs/{config_id}.yml"
-with open(configs_path, "r") as file:
-    flow_configs = yaml.safe_load(file)
-    
-    
-parser = argparse.ArgumentParser()
-parser.add_argument("-fid", "--flow_id")
-parser.add_argument("-p", "--particle_type")
-parser.add_argument("-did", "--dir_id", help='ID associated with the directory')
-parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
-parser.add_argument("-ne", "--num_to_ensemble", default=10) # how many BDTs to train for a single pseudoexperiment
-parser.add_argument("-start", "--start", default=0, type=int)  # how many pseudoexperiments to run
-parser.add_argument("-stop", "--stop", default=1000, type=int) 
-parser.add_argument("-run_jet", "--run_jet", action="store_true")
-parser.add_argument("-seeds", "--seeds", default="1", help="csv for seeds of flow models to use")
-parser.add_argument("-run_latent", "--run_latent", action="store_true")
-parser.add_argument('-use_extra_data', action="store_true", default=False)
-parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
-parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
+if args.train_samesign: samesign_id = "SS"
+else: samesign_id = "OS"
+if args.train_jet: jet_id = "jet"
+else: jet_id = "nojet"
 
-args = parser.parse_args()
-
-flow_id = args.flow_id
-particle_type = args.particle_type
-num_to_ensemble = int(args.num_to_ensemble)
-dir_id = args.dir_id
-
-if "upsilon" in particle_type:
-    particle_id = "upsilon"
-elif "psi_prime" in particle_type:
-    particle_id = "psi_prime"
-elif "eta" in particle_type:
-    particle_id = "eta"
-elif "rho" in particle_type:
-    particle_id = "rho"
-elif "psi" in particle_type:
-    particle_id = "psi"
-
-
-if args.run_jet:
-    jet_id = "jet"
-else:
-    jet_id = "nojet"
-# load in the data
-
+# TODO: implement for inner bands
 bands = ["SBL", "SR", "SBH"]
 data_dict = {}
 
-
-
-
 if args.train_samesign:
-    train_data_id = "_SS"
+    train_data_id = "SS"
+    alt_test_data_id = "OS"
+    train_data_id_title = "SS"
 else:
-    train_data_id = "_OS"
+    train_data_id = "OS"
+    alt_test_data_id = "SS"
+    train_data_id_title = "OS"
 
-# train on opp sign means alt test set is samesign
-if train_data_id == "_OS": 
-    alt_test_data_id = "_SS"
-    train_data_id_title = "_OS"
-elif train_data_id == "_SS": 
-    alt_test_data_id = "_OS"
-    train_data_id_title = "_SS"
-    
-    
-working_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/{dir_id}/"
-flow_training_dir = f"{working_dir}/models/{project_id}_{particle_type}{train_data_id}_{jet_id}/{flow_id}/{config_id}"
+working_dir = workflow["file_paths"]["working_dir"]
+processed_data_dir = workflow["file_paths"]["data_storage_dir"] +f"/projects/{args.run_id}/processed_data/"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] + f"/projects/{args.run_id}/models/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{samesign_id}_{jet_id}/{args.feature_id}/{args.configs}"
+
 # make dir to save out pickles
-pickle_save_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/pickles/{flow_id}_{particle_type}{train_data_id_title}"
+pickle_save_dir = workflow["file_paths"]["data_storage_dir"]+f"/pickles/{args.feature_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}"
 os.makedirs(pickle_save_dir, exist_ok=True)
+os.makedirs(f"{working_dir}/plots", exist_ok = True)
     
 if args.run_latent:
-    pp = PdfPages(f"plots/{flow_id}_{particle_type}{train_data_id_title}_latent.pdf")
+    pp = PdfPages(f"plots/{args.feature_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}_latent.pdf")
     os.environ["CUDA_VISIBLE_DEVICES"]="0"
     import torch
     # selecting appropriate device
@@ -112,7 +93,7 @@ if args.run_latent:
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
 else:
-    pp = PdfPages(f"plots/{flow_id}_{particle_type}{train_data_id_title}.pdf")
+    pp = PdfPages(f"plots/{args.feature_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}.pdf")
     
     
 
@@ -133,28 +114,27 @@ for key in train_samples_dict.keys():
 
 # load in the data corresponding to the train id
 # we actually want the "test band" here -- train is just for flow
-with open(f"{working_dir}/processed_data/{project_id}_{particle_type}{train_data_id}_{jet_id}_test_band_data", "rb") as infile: 
+with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}_test_band_data", "rb") as infile: 
     test_data_dict = pickle.load(infile)
 
 # load in the alternative data
-with open(f"{working_dir}/processed_data/{project_id}_{particle_type}{alt_test_data_id}_{jet_id}_test_band_data", "rb") as infile: 
+with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{alt_test_data_id}_{jet_id}_test_band_data", "rb") as infile: 
     alt_test_data_dict = pickle.load(infile)
 
 if args.use_extra_data:
-    with open(f"{working_dir}/processed_data/{project_id}_{particle_type}_{jet_id}_train_band_data", "rb") as infile: 
+    with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}_train_band_data", "rb") as infile: 
         ROC_test_data_1_dict = pickle.load(infile)
     
 # ROC set 2 is evaluated on a higher stats version of the flow samples (so may be same or opp sign)
 
-print(f"Loading classifier train samples from {project_id}_{particle_type}{train_data_id}")
-print(f"Loading classifier train data from {project_id}_{particle_type}{train_data_id}")
-print(f"Loading alternative test data from {project_id}_{particle_type}{alt_test_data_id}")
-print(f"Loading ROC test data from {project_id}_{particle_type}_{jet_id}")
+print(f"Loading classifier train samples from {args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}")
+print(f"Loading classifier train data from {args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}")
+print(f"Loading alternative test data from {args.project_id}_{args.particle_id}_{args.analysis_test_id}_{alt_test_data_id}_{jet_id}")
+print(f"Loading ROC test data from {args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}")
 print()
 
-with open(f"{working_dir}/models/{project_id}_{particle_type}{train_data_id}_{jet_id}/{flow_id}/{config_id}/seed1/configs.txt", "rb") as infile: 
+with open(f"{flow_training_dir}/seed1/configs.txt", "rb") as infile: 
     configs = infile.readlines()[0].decode("utf-8")
-    
     feature_set = [x.strip() for x in configs.split("'")][1::2]
 
 print(feature_set)
@@ -166,8 +146,6 @@ n_features = len(feature_set) - 1
         
 # test set events: not used during flow training
 banded_test_data = assemble_banded_datasets(test_data_dict, feature_set, bands)
-
-
 
 # alt test set events
 banded_alt_test_data = assemble_banded_datasets(alt_test_data_dict, feature_set, bands)
@@ -190,9 +168,6 @@ if args.use_extra_data:
 SR_min_rescaled = np.min(banded_test_data["SR"][:,-1])
 SR_max_rescaled = np.max(banded_test_data["SR"][:,-1])
 
-
-
-
 # BDT HYPERPARAMETERS 
 
 """
@@ -214,11 +189,11 @@ bdt_hyperparams_dict = {
     "learning_rate":0.1,  # stop training BDT is validation loss doesn't improve after this many rounds
     "subsample":0.7,   # fraction of samples to be used for fitting the individual base learners
     "early_stopping_rounds":10,
-    "n_ensemble": num_to_ensemble
+    "n_ensemble": args.num_to_ensemble
     
 }
 
-n_folds = 5
+
 
 all_test_data_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
 all_scores_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
@@ -231,7 +206,7 @@ def bootstrap_array(data_array):
 
 for pseudo_e in range(args.start, args.stop):
     
-    print(f"On pseudoexperiment {pseudo_e} (of {args.start} to {args.stop-1})...")
+    print(f"On pseudoexperiment {pseudo_e} (of {args.start} to {args.stop})...")
     np.random.seed(pseudo_e) # set seed for data bootstrapping
     
     if pseudo_e == 0:
@@ -283,10 +258,10 @@ for pseudo_e in range(args.start, args.stop):
 
     
     if pseudo_e==0:
-        loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, loc_SR_data, loc_SB_test_set, n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=True, pdf=pp, take_ensemble_avg=True)
+        loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, loc_SR_data, loc_SB_test_set, args.n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=True, pdf=pp, take_ensemble_avg=True)
         pp.close()
     else:
-        loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, loc_SR_data, loc_SB_test_set, n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=False, pdf=None, take_ensemble_avg=True)
+        loc_test_data_splits, loc_scores_splits, loc_alt_data_splits, loc_alt_scores_splits = run_BDT_bump_hunt(loc_SR_samples, loc_SR_data, loc_SB_test_set, args.n_folds, bdt_hyperparams_dict, alt_test_sets_data=loc_alt_test_sets_data, visualize=False, pdf=None, take_ensemble_avg=True)
 
     all_test_data_splits[pseudo_e] = loc_test_data_splits
     all_scores_splits[pseudo_e] = loc_scores_splits
