@@ -33,34 +33,38 @@ In addition, a smaller set of analysis features (e.g. the ``auxiliary features")
 
 For the ML study in particular, the data must be further preprocessed before being fed into the CATHODE-inspired normalizing flow architecture. We first logit-transform all the features (except the dimuon invariant mass, which is standard-scaled), then min-max scale them to the range (0, 1). This transformation was found to be effective for the normalizing flow training. 
 
-In `04_preprocess_data_lowmass`, we provide a notebook that applies the cuts for a single choice of signal region (SR) and sidebands (SB).
+`04_preprocess_data_lowmass.ipynb` applies the cuts for a single choice of signal region (SR) and sidebands (SB). **TODO: finish versions for lowmass scan and BSM signal injection**
 
-At this point, it is helpful to specify a few keywords to identify the specific project / features of interest. **(should these be added to the workflow??)**
+At this point, it is helpful to specify a few keywords to identify the specific project / features of interest. **(should these be added to the workflow?? There is a lot of redundancy in these, but the split it very helpful when considering multiple feature sets / iso cutsfor a specific particle)**
 - `run_id`:
 - `project_id`:
-- `particle_id`:
+- `particle_id`: 
 - `analysis_test_id`:
-- `feature_id`:
-- `feature_list`:
+- `feature_id`: a name for the feature set (auxiliary variables + invariant mass) that you want to analyze
+- `feature_list`: each feature in the feature set, in the format `aux_feature_0,aux_feature_1,...,dimu_mass`
+
+Once you have specified a feature id and feature list, they should be added to `workflow.yaml`
 
 ## ML study: network training
 
 Once some version of notebook `04` has been run, use the script `05_trueCATHODE.py` to train the normalizing flow on the auxiliary features, conditioned on the invariant mass.
 
-Helpful keywords:
-- `train_samesign`
-- `train_jet`
-- `bkg_fit_type`
-- `num_bins_SR`
-- `feats`
+Helpful flags:
+- `train_samesign`: if you want to train on samesign muon pairs, instead of opposite-sign pairs
+- `train_jet`: **TODO: this should probably be removed as a flag in general...**
+- `bkg_fit_type`: choose from `cubic`, `quintic`, or `septic`
+- `num_bins_SR`: `int` for the number of bin *boundaries* in the SR
 
 You can specify `epochs` and `batch_size` as an argument to the script. For larger flow architecture changes, create a new config file in the `configs/<your_config.yml>` folder and pass the file with `-c your_config.yml`.
 
-To regenerate flow samples with a different choice of SR binnins or background polynomial fit, use the `-no_train` flag.
+To regenerate flow samples with a different choice of SR binninf or or background polynomial fit, use the `-no_train` flag.
 
-Check the flow performance in the SB with `06_eval_CATHODE.py`
+Once flow samples have been generated, check the flow performance in the SB with `06_eval_CATHODE.py`. This code trains a BDT to discriminate SB samples from SB data. The ROC AUC should be close to that of a random classifier (~0.5).
 
-`07_bump_hunt_boostrap.py`
+Finally, carry out the bump hunt with `07_bump_hunt_boostrap.py`.
+- `num_to_ensemble`: how many BDTs to train for a single pseudoexperiment
+- `start`, `stop`: indices for the pseudoexperiments. An index of 0 corresponds to the actual data. Any other index sets the random seed for a particular data nbootstrap.
+
 
 ## Compilation
 08
