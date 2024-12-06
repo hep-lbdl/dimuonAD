@@ -427,7 +427,7 @@ def calculate_test_statistic(masses, fit_function, fit_type, plot_bins_SR, plot_
     def null_likelihood_function(bprime):
         return likelihood_function(bprime, 0, num_total_in_SR)
 
-    minimization = minimize(null_likelihood_function, total_B, bounds = [(0, None)])
+    minimization = minimize(null_likelihood_function, total_B + total_B_error, bounds = [(0, None)], tol = 0.1)
     post_fit_B = minimization.x[0]
     log_B = likelihood_function(post_fit_B, 0, num_total_in_SR)
     if verbose:
