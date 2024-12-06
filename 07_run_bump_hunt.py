@@ -151,7 +151,6 @@ banded_test_data = assemble_banded_datasets(test_data_dict, feature_set, bands)
 banded_alt_test_data = assemble_banded_datasets(alt_test_data_dict, feature_set, bands)
 
 
-
 num_test_events = banded_test_data["SR"].shape[0]+banded_test_data["SBL"].shape[0]+banded_test_data["SBH"].shape[0]
 print(f"Total number of default test events: {num_test_events}.")
 num_test_events = banded_alt_test_data["SR"].shape[0]+banded_alt_test_data["SBL"].shape[0]+banded_alt_test_data["SBH"].shape[0]
@@ -219,17 +218,21 @@ for pseudo_e in range(args.start, args.stop):
         loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
         loc_SR_data = clean_data(banded_test_data["SR"])
         loc_SR_samples = clean_data(train_samples_dict["SR_samples"])
-        
+
     else:
          #assemble the bootstrapped datasets
         print("Bootstrapping data")
-        loc_alt_test_set = np.vstack([bootstrap_array(banded_alt_test_data["SR"]),bootstrap_array(banded_alt_test_data["SBL"]),bootstrap_array(banded_alt_test_data["SBH"])])
-        if args.use_extra_data:
-            loc_ROC_test_events_1 = np.vstack([bootstrap_array(banded_ROC_test_data["SR"]),bootstrap_array(banded_ROC_test_data["SBL"]),bootstrap_array(banded_ROC_test_data["SBH"])])
-        loc_ROC_test_samples_2 = np.vstack([bootstrap_array(train_samples_dict["SR_samples_ROC"]),bootstrap_array(train_samples_dict["SBL_samples_ROC"]),bootstrap_array(train_samples_dict["SBH_samples_ROC"])])
-        loc_SB_test_set = np.vstack([bootstrap_array(clean_data(banded_test_data["SBL"])),bootstrap_array(clean_data(banded_test_data["SBH"]))])
-        loc_SR_data = bootstrap_array(clean_data(banded_test_data["SR"]))
         
+        loc_alt_test_set = bootstrap_array(np.vstack([banded_alt_test_data["SR"],banded_alt_test_data["SBL"],banded_alt_test_data["SBH"]]))
+        if args.use_extra_data:
+            loc_ROC_test_events_1 = bootstrap_array(np.vstack([banded_ROC_test_data["SR"],banded_ROC_test_data["SBL"],banded_ROC_test_data["SBH"]]))
+        loc_ROC_test_samples_2 = bootstrap_array(np.vstack([train_samples_dict["SR_samples_ROC"],train_samples_dict["SBL_samples_ROC"],train_samples_dict["SBH_samples_ROC"]]))
+
+        bootstrapped_loc_test_set = bootstrap_array(np.vstack([banded_test_data["SR"],banded_test_data["SBL"],banded_test_data["SBH"]]))                     
+        in_SR = (bootstrapped_loc_test_set[:,-1] >= SR_min_rescaled) & (bootstrapped_loc_test_set[:,-1] <= SR_max_rescaled)
+        loc_SR_data = bootstrapped_loc_test_set[in_SR]
+        loc_SB_test_set = bootstrapped_loc_test_set[~in_SR]                       
+       
         # I think the validation set and the flow samples should NOT be bootstrapped
         loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
         loc_SR_samples = clean_data(train_samples_dict["SR_samples"])

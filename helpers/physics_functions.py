@@ -14,6 +14,7 @@ muon_mass = 0.1056583755 # GeV
 def assemble_m_inv(a_M, a_pt, a_eta, a_phi, b_M, b_pt, b_eta, b_phi):
     # computes system of mother particle
     
+
     a_E = np.sqrt(a_M**2 + (a_pt*np.cosh(a_eta))**2)
     b_E = np.sqrt(b_M**2 + (b_pt*np.cosh(b_eta))**2)
 
@@ -30,8 +31,9 @@ def assemble_m_inv(a_M, a_pt, a_eta, a_phi, b_M, b_pt, b_eta, b_phi):
     mother_px = a_px + b_px
     mother_py = a_py + b_py
     mother_pz = a_pz + b_pz
-
+    
     mother_M = np.sqrt(mother_E**2 - mother_px**2 - mother_py**2 - mother_pz**2)
+    
     mother_pt = np.sqrt(mother_px**2 + mother_py**2)
     mother_eta = np.arcsinh(mother_pz/mother_pt)
     mother_phi = np.arctan(mother_py/mother_px)
@@ -415,7 +417,7 @@ def calculate_test_statistic(masses, fit_function, fit_type, plot_bins_SR, plot_
     # If one-sided limits, then automatically return q_0 = 0
     if ONE_SIDED and (total_S < 0 or total_B < 0):
         q_0 = 0
-        return q_0
+        return total_S, total_B, q_0
 
 
     ########## Likelihoods ##########
@@ -438,7 +440,7 @@ def calculate_test_statistic(masses, fit_function, fit_type, plot_bins_SR, plot_
 
     # Calculate the test statistic
     q_0 = log_B - log_S_plus_B
-    return q_0
+    return total_S, total_B, q_0
      
 
 

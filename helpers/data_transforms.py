@@ -22,6 +22,15 @@ def scaled_to_physical_transform(scaled_x, preproc_info):
     
     return x_norm*(preproc_info["max"]-preproc_info["min"]) + preproc_info["min"]
 
+def unscale_mass(scaled_x, SB_left, SB_right):
+    
+    unscaled_x =  scaled_x*preproc_info["std"] + preproc_info["mean"]
+    #inverse logit
+    x_norm = np.exp(unscaled_x) / (1.0 + np.exp(unscaled_x))
+    x_norm = (x_norm - 0.01) / 0.98
+    
+    return x_norm*(preproc_info["max"]-preproc_info["min"]) + preproc_info["min"]
+
 
 def clean_data(x):
     
