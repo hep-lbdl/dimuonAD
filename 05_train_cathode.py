@@ -19,14 +19,12 @@ from helpers.flow_sampling import *
 parser = argparse.ArgumentParser()
 
 # project-specific arguments
-parser.add_argument("-run", "--run_id", help='ID associated with the directory')
-parser.add_argument("-project", "--project_id", help='ID associated with the dataset')
-parser.add_argument("-particle", "--particle_id", help='ID associated with the dataset')
-parser.add_argument("-analysis", "--analysis_test_id", help='ID associated with the dataset')
+parser.add_argument("-workflow", "--workflow_path", default="workflow.yaml", help='ID associated with the directory')
 
 # data-specific arguments
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
-parser.add_argument("-train_jet", "--train_jet", action="store_true")
+parser.add_argument("-bootstrap", "--bootstrap", type=int)
+
 parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 parser.add_argument('-premade_bins', '--premade_bins', action="store_true", default=False, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
@@ -60,27 +58,26 @@ else: bands = ["SBL", "SR", "SBH"]
 
 if args.train_samesign: samesign_id = "SS"
 else: samesign_id = "OS"
-if args.train_jet: jet_id = "jet"
-else: jet_id = "nojet"
+
     
 feature_set = [f for f in args.feature_list.split(",")]
 print(f"Using feature set {feature_set}")
 num_features = len(feature_set) - 1 # context doesn't count
 
 
+import yaml
+with open(args.workflow_path, "r") as file:
+    workflow = yaml.safe_load(file)
 
 print(f"Feature id: {args.feature_id}")
-print(f"Analysis: {args.project_id}, {args.particle_id}, {args.analysis_test_id}")
+print(f"Analysis:", workflow["analysis_keywords"]["name"])
 print(f"Configs: {args.configs}")
 
-import yaml
-with open("workflow.yaml", "r") as file:
-    workflow = yaml.safe_load(file)
 
 working_dir = workflow["file_paths"]["working_dir"]
 path_to_config_file = f"{working_dir}/configs/{args.configs}.yml"
-processed_data_dir = workflow["file_paths"]["data_storage_dir"] +f"/projects/{args.run_id}/processed_data/"
-flow_training_dir = workflow["file_paths"]["data_storage_dir"] + f"/projects/{args.run_id}/models/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{samesign_id}_{jet_id}/{args.feature_id}/{args.configs}/seed{args.seed}"
+processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/bootstrap{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs}/seed{args.seed}"
 os.makedirs(flow_training_dir, exist_ok=True)
 
 
@@ -106,7 +103,7 @@ LOAD IN DEDICATED TRAIN DATA FOR FLOW
 """
 
 # dataset for the bump hunt only
-with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{samesign_id}_{jet_id}_test_band_data", "rb") as ifile:
+with open(f"{processed_data_dir}/bootstrap{args.bootstrap}_{samesign_id}_test_band_data", "rb") as ifile:
     proc_dict_s_inj_test = pickle.load(ifile)
 """
 if args.use_extra_data:
@@ -124,10 +121,10 @@ if args.use_extra_data:
 """  
     
 for b in bands:
-    num_events_band = proc_dict_s_inj_test[b]["s_inj_data"]["dimu_mass"].shape[0]
+    num_events_band = proc_dict_s_inj_test[b]["dimu_mass"].shape[0]
     data_dict[b] = np.empty((num_events_band, num_features+1))
     for i, feat in enumerate(feature_set):
-        data_dict[b][:,i] = proc_dict_s_inj_test[b]["s_inj_data"][feat].reshape(-1,1).reshape(-1,)
+        data_dict[b][:,i] = proc_dict_s_inj_test[b][feat].reshape(-1,1).reshape(-1,)
     print("{b} data has shape {length}.".format(b = b, length = data_dict[b].shape))
 
 
@@ -141,38 +138,39 @@ data_dict["SB"] =  np.vstack((data_dict["SBL"], data_dict["SBH"]))
 if use_inner_bands:
     data_dict["IB"] =  np.vstack((data_dict["IBL"], data_dict["IBH"]))
 
-# train val split
-from sklearn.model_selection import train_test_split
 
-SBL_data_train, SBL_data_val = train_test_split(data_dict["SBL"], test_size=0.2, random_state=42)
-SBH_data_train, SBH_data_val = train_test_split(data_dict["SBH"], test_size=0.2, random_state=42)
-
-
-
-print(f"SBL train data has shape {SBL_data_train.shape}.")
-print(f"SBL val data has shape {SBL_data_val.shape}.")
-print(f"SBH train data has shape {SBH_data_train.shape}.")
-print(f"SBH val data has shape {SBH_data_val.shape}.")
-
-train_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_train, SBH_data_train]), batch_size=args.batch_size, shuffle=True, num_workers = 8, pin_memory = True)
-val_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_val, SBH_data_val]), batch_size=args.batch_size, shuffle=False, num_workers = 8, pin_memory = True)
-    
-
-"""
-CREATE THE FLOW
-"""
-
-anode = DensityEstimator(path_to_config_file, num_features, device=device,
-                         verbose=args.verbose, bound=args.no_logit)
-model, optimizer = anode.model, anode.optimizer
-
-with open(f"{flow_training_dir}/configs.txt", "w") as param_file:
-    param_file.write(f"feature_set = {feature_set}\n")
-    
 """
 TRAIN THE FLOW
 """
 if not args.no_train:
+    # train val split
+    from sklearn.model_selection import train_test_split
+    
+    SBL_data_train, SBL_data_val = train_test_split(data_dict["SBL"], test_size=0.2, random_state=42)
+    SBH_data_train, SBH_data_val = train_test_split(data_dict["SBH"], test_size=0.2, random_state=42)
+    
+    
+    
+    print(f"SBL train data has shape {SBL_data_train.shape}.")
+    print(f"SBL val data has shape {SBL_data_val.shape}.")
+    print(f"SBH train data has shape {SBH_data_train.shape}.")
+    print(f"SBH val data has shape {SBH_data_val.shape}.")
+    
+    train_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_train, SBH_data_train]), batch_size=args.batch_size, shuffle=True, num_workers = 8, pin_memory = True)
+    val_loader = torch.utils.data.DataLoader(np.vstack([SBL_data_val, SBH_data_val]), batch_size=args.batch_size, shuffle=False, num_workers = 8, pin_memory = True)
+        
+    
+    """
+    CREATE THE FLOW
+    """
+    
+    anode = DensityEstimator(path_to_config_file, num_features, device=device,
+                             verbose=args.verbose, bound=args.no_logit)
+    model, optimizer = anode.model, anode.optimizer
+    
+    with open(f"{flow_training_dir}/configs.txt", "w") as param_file:
+        param_file.write(f"feature_set = {feature_set}\n")
+    
     train_ANODE(model, optimizer, train_loader, val_loader, f"flow",
                 args.epochs, savedir=flow_training_dir, device=device, verbose=args.verbose, no_logit=args.no_logit, data_std=None)
 
