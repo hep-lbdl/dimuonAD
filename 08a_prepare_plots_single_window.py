@@ -8,6 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from tqdm import tqdm
+import yaml
 
 
 from helpers.physics_functions import bkg_fit_cubic, bkg_fit_septic, bkg_fit_quintic, get_bins, select_top_events_fold, curve_fit_m_inv, calc_significance, get_errors_bkg_fit_ratio, calculate_test_statistic
@@ -41,18 +42,16 @@ np.seterr(divide='ignore')
 # In[100]:
 
 
-import yaml
 with open("workflow.yaml", "r") as file:
     workflow = yaml.safe_load(file) 
 
 # pickles contain all the results from the BDT training
 pickle_save_dir_prefix = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/pickles/mix_2"
 train_samesign = False
-
-working_dir = f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/trigger_12_03/"
+working_dir = "/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/trigger_12_03/"
 
 # Define outut folder for plot data
-plot_data_dir = f"plot_data/"
+plot_data_dir = "plot_data/"
 
 # basically hard-coded for the PRL 
 num_pseudoexperiments = 1000 + 1
@@ -319,7 +318,6 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
 
 
 
-    fig, ax = newplot("full", width = 12, height = 9, use_tex = latex_flag)
     for t, threshold in enumerate(fpr_thresholds):
         
         filtered_masses = []
@@ -342,10 +340,7 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
 
     
         
-        # plot the fit function
-        plt.plot(plot_centers_all, fit_function(plot_centers_all, *popt), lw = 2, linestyle = "dashed", color = f"C{t}")    
-        function_with_band(ax, fit_function, [SB_left, SB_right], popt, pcov, color = f"C{t}")
-
+        # plot the fit functio
 # def function_with_band(ax, f, range, params, pcov = None, color = "purple", alpha_line = 0.75, alpha_band = 0.25, lw = 3,  **kwargs):
 
 
@@ -362,15 +357,6 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
 
 
 
-
-        label_string = str(round(100*threshold, 2))+"% FPR: "+str(total_events)+" events,  $Z_0$: "+str(round(np.sqrt(q0),2))
-
-        # hist_with_errors(ax, filtered_masses, bins = plot_bins_all, range = (SB_left, SB_right), lw = 3, color = f"C{t}",label = label_string)
-        # hist_with_outline(ax, filtered_masses, bins = plot_bins_all, range = (SB_left, SB_right), lw = 3, color = f"C{t}",label = label_string)
-        plt.hist(filtered_masses, bins = plot_bins_all, lw = 3, histtype = "step", color = f"C{t}",label = label_string, alpha = 0.75)
-        plt.scatter(plot_centers_SB, y_vals, color = f"C{t}")
-
-
         save_data["popts"].append(popt)
         save_data["pcovs"].append(pcov)
         save_data["significances"].append(np.sqrt(q0))
@@ -378,44 +364,6 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
         save_data["y_vals"].append(y_vals)
 
 
-
-    line1 = f"{num_bins_SR -1 } Bins in SR"
-    line2 = f"Fit Type: {fit_type.capitalize()} Polynomial"
-    line3 = r"Muon Iso_04 $\geq$ 0.55"
-    line4 = r"~6% of Original Data"
-
-    starting_x = 0.05
-    starting_y = 0.8
-    delta_y = 0.04
-    text_alpha = 0.75
-    ax.text(starting_x, starting_y - 0 * delta_y, line1, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha)
-    ax.text(starting_x, starting_y - 1 * delta_y, line2, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha)
-    ax.text(starting_x, starting_y - 2 * delta_y, line3, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha)
-    ax.text(starting_x, starting_y - 3 * delta_y, line4, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha)
-
-
-    legend_title = r"$\bf{CMS 2016 Open Data: Dimuons}$"
-    plt.legend(loc = (0.465, 0.575), fontsize = 14, title = legend_title, title_fontsize = 16)
-
-
-    plt.axvline(SR_left, color= "k", lw = 3, zorder = 10)
-    plt.axvline(SR_right, color= "k", lw = 3, zorder = 10)
-
-    plt.xlabel("$M_{\mu\mu}$ [GeV]", fontsize = 18)
-    plt.ylabel("Events", fontsize = 18)
-
-    plt.yscale("log")
-    # plt.ylim(0.5, 1e3)
-    plt.ylim(0.5, 1e5)
-
-    # Add more x ticks (major and minor)
-    plt.xticks(fontsize = 18)
-    plt.yticks(fontsize = 18)
-    plt.minorticks_on()
-    plt.tick_params(axis='x', which='minor', bottom=True)
-    plt.tick_params(axis='y', which='minor', left=True)
-
-    plot_upsilon_resonances(ax)
     
 
     # # Vertical Black Lines at boundaries of SR
@@ -566,7 +514,6 @@ def plot_feature_cuts(feature, fpr_thresholds, test_data_dict, mass_scalar, fit_
 
 
     # fig, ax = newplot("full", aspect_ratio = 1.5)
-    fig, ax = newplot("full", width = 12, height = 9, use_tex = latex_flag)
     for t, threshold in enumerate(fpr_thresholds):
 
 
@@ -591,28 +538,17 @@ def plot_feature_cuts(feature, fpr_thresholds, test_data_dict, mass_scalar, fit_
         popt, pcov, chi2, y_vals, n_dof = curve_fit_m_inv(filtered_masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
         #print("chi2/dof:", chi2/n_dof)
         
-        # plot the fit function
-        plt.plot(plot_centers_all, fit_function(plot_centers_all, *popt), lw = 2, linestyle = "dashed", color = f"C{t}")    
 
         # calculate significance of bump
                 # calculate significance of bump
-        if ONE_SIDED:
-            num_S_expected_in_SR, num_B_expected_in_SR = calc_significance(filtered_masses, fit_function, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, ONE_SIDED)
-            q0 = calculate_test_statistic(filtered_masses, fit_function, fit_type, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, pcov)
+        num_S_expected_in_SR, num_B_expected_in_SR = calc_significance(filtered_masses, fit_function, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, ONE_SIDED)
+        q0 = calculate_test_statistic(filtered_masses, fit_function, fit_type, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, pcov)
 
 
-            y_err = get_errors_bkg_fit_ratio(popt, pcov, plot_centers_SR, fit_type)
-            B_error = np.sqrt(np.sum(y_err**2))
-            S_over_B = num_S_expected_in_SR/num_B_expected_in_SR
+        y_err = get_errors_bkg_fit_ratio(popt, pcov, plot_centers_SR, fit_type)
+        B_error = np.sqrt(np.sum(y_err**2))
+        S_over_B = num_S_expected_in_SR/num_B_expected_in_SR
 
-            
-
-        label_string = str(round(100*threshold, 2))+"% FPR: "+str(len(feature_SBL_cut)+len(feature_SR_cut)+len(feature_SBH_cut))+" events,  $Z_0$: "+str(round(np.sqrt(q0),2))
-
-
-        hist_with_outline(ax, filtered_masses, bins = plot_bins_all, range = (SB_left, SB_right), lw = 3, color = f"C{t}",label = label_string, alpha_1 = 0.1, alpha_2 = 0.5)
-        # plt.hist(filtered_masses, bins = plot_bins_all, lw = 3, histtype = "step", color = f"C{t}",label = label_string, alpha = 0.75)
-        plt.scatter(plot_centers_SB, y_vals, color = f"C{t}")
 
 
         save_data["popts"].append(popt)
@@ -621,42 +557,6 @@ def plot_feature_cuts(feature, fpr_thresholds, test_data_dict, mass_scalar, fit_
         save_data["filtered_masses"].append(filtered_masses)
         save_data["y_vals"].append(y_vals)
 
-    line1 = f"{num_bins_SR -1 } Bins in SR"
-    line2 = f"Fit Type: {fit_type.capitalize()} Polynomial"
-    line3 = r"Muon Iso_04 $\geq$ 0.55"
-    line4 = r"~6% of Original Data"
-
-    starting_x = 0.475
-    starting_y = 0.45
-    delta_y = 0.04
-    text_alpha = 0.75
-    ax.text(starting_x, starting_y - 0 * delta_y, line1, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha)
-    ax.text(starting_x, starting_y - 1 * delta_y, line2, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha)
-    ax.text(starting_x, starting_y - 2 * delta_y, line3, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha)
-    ax.text(starting_x, starting_y - 3 * delta_y, line4, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha)
-
-
-    legend_title = r"$\bf{CMS 2016 Open Data: Dimuons}$: "+feature
-    plt.legend(loc = (0.465, 0.575), fontsize = 14, title = legend_title, title_fontsize = 16)
-
-
-    plt.axvline(SR_left, color= "k", lw = 3, zorder = 10)
-    plt.axvline(SR_right, color= "k", lw = 3, zorder = 10)
-
-    plt.xlabel("$M_{\mu\mu}$ [GeV]", fontsize = 18)
-    plt.ylabel("Events", fontsize = 18)
-
-    # plt.yscale("log")
-    plt.ylim(0.5, 1e3)
-
-    # Add more x ticks (major and minor)
-    plt.xticks(fontsize = 18)
-    plt.yticks(fontsize = 18)
-    plt.minorticks_on()
-    plt.tick_params(axis='x', which='minor', bottom=True)
-    plt.tick_params(axis='y', which='minor', left=True)
-
-    plot_upsilon_resonances(ax)
 
     return save_data
 
@@ -701,7 +601,7 @@ for pseudo_e in range(num_pseudoexperiments):
 def get_classifier_metrics_high_stats(dataset_by_pseudo_e, scores_by_pseudo_e, score_cutoffs):
             
 
-    num_experiments = num_pseudoexperiments
+    num_experiments = 100
     S_yield, B_yield = np.empty((fpr_thresholds_finegrained.shape[0], num_experiments)), np.empty((fpr_thresholds_finegrained.shape[0], num_experiments))
     significances = np.empty((fpr_thresholds_finegrained.shape[0], num_experiments))
 
@@ -802,7 +702,7 @@ def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_type, title, SB
     
 
 
-    num_experiments = num_pseudoexperiments
+    num_experiments = 100
     fpr_thresholds = np.logspace(-4, 0, 25)[::-1]
     S_yield = np.zeros((len(fpr_thresholds), num_experiments))
     B_yield = np.zeros((len(fpr_thresholds), num_experiments))
@@ -928,185 +828,6 @@ for (i, feature) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "random"]):
 
     with open(f"{plot_data_dir}{data_prefix}_significances_alt_{feature}_{fit_type}_{num_bins_SR}.pickle", "wb") as ofile:
         pickle.dump(feature_SIGs_alt[feature], ofile)
-
-  
-
-
-# In[121]:
-
-
-# Add the ordinary TPR, FPR, ROC, SIC to dictionary with key "CATHODE"
-feature_SIGs["CATHODE"] = significances
-feature_SIGs_alt["CATHODE"] = significances_alt
-
-
-# In[124]:
-
-
-def get_median_percentiles(x_array):
-    
-    x_median = np.median(x_array, axis = 1)
-    x_lower = np.percentile(x_array, 16, axis = 1)
-    x_upper = np.percentile(x_array, 84, axis = 1)
-
-    x_2lower = np.percentile(x_array, 2.5, axis = 1)
-    x_2upper = np.percentile(x_array, 97.5, axis = 1)
-
-    return x_median, x_lower, x_upper, x_2lower, x_2upper
-
-
-# FPR Variant of SIC
-fig, ax = newplot("full", use_tex = latex_flag)
-colors = ["red", "gold", "green", "blue"]
-for (i, key) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "CATHODE"]):
-
-    SIG_observed = feature_SIGs[key][:,0]
-    SIG_median, SIG_lower, SIG_upper, SIG_2lower, SIG_2upper = get_median_percentiles(feature_SIGs[key][:,1:])
-    # SIG_median = SIG_observed
-    # SIG_lower = SIG_observed
-    # SIG_upper = SIG_observed
-    # SIG_2lower = SIG_observed
-    # SIG_2upper = SIG_observed
-    
-
-    ax.plot(fpr_thresholds_finegrained, SIG_observed, color = colors[i])
-
-    ax.plot(fpr_thresholds_finegrained, SIG_median, color = colors[i], linestyle = "dashed", alpha = 0.5)
-    ax.fill_between(fpr_thresholds_finegrained, SIG_lower, SIG_upper, alpha = 0.1, color = colors[i])
-    ax.fill_between(fpr_thresholds_finegrained, SIG_2lower, SIG_2upper, alpha = 0.1, color = colors[i])
-
-# Artificially make a legend
-plt.axhline(0, color = "Grey", linestyle = "--", label = "Expected $\pm$ 1, 2$\sigma$")
-plt.axhline(0, color = "Grey", label = "Observed")
-
-# add dummy white space to legend so that column 1 has the same height as column 2
-num_features = len(feature_SIGs.keys()) 
-for i in range(num_features):
-    plt.axhline(0, color = "white", label = " ")
-
-
-# Add the keys in a seperate column with filled color
-for (i, key) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "CATHODE"]):
-    ax.hist([-1], color = colors[i], alpha = 0.25, label = key, histtype = "stepfilled")
-
-
-# print(feature_SIGs["CATHODE"][:,0])
-
-SIG_observed = feature_SIGs["random"][:,0]
-SIG_median, SIG_lower, SIG_upper, SIG_2lower, SIG_2upper = get_median_percentiles(feature_SIGs["random"][:,1:])
-
-ax.plot(fpr_thresholds_finegrained, SIG_median, linestyle = "dashed", color = "black", label = "Random Cut")
-ax.set_xlabel("FPR")
-ax.set_ylabel("Significance $Z_0 = \Phi^{-1}(1-p_0)$")
-
-
-line1 = f"{num_bins_SR -1 } Bins in SR"
-line2 = f"Fit Type: {fit_type.capitalize()} Polynomial"
-line3 = r"Muon Iso_04 $\geq$ 0.55"
-line4 = r"~6% of Original Data"
-
-starting_x = 0.075
-starting_y = 0.775
-delta_y = 0.04
-text_alpha = 0.75
-ax.text(starting_x, starting_y - 0 * delta_y, line1, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha, zorder = 10)
-ax.text(starting_x, starting_y - 1 * delta_y, line2, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha, zorder = 10)
-ax.text(starting_x, starting_y - 2 * delta_y, line3, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha, zorder = 10)
-ax.text(starting_x, starting_y - 3 * delta_y, line4, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha, zorder = 10)
-
-
-legend_title = r"$\bf{CMS 2016 Open Data: Dimuons}$"
-
-plt.legend(title = legend_title, loc = "upper center", ncol = 2, fontsize = 14)
-plt.xscale("log")
-plt.ylim(0.0, 20)
-# plt.yscale("log")
-
-# ax.plot(FPR_median, SIC_median, color = "black", label = r"CATHODE")
-# ax.fill_between(FPR_median, SIC_lower, SIC_upper, alpha = 0.3, color = "black")
-# ax.plot(FPR_median, TPR_median/np.sqrt(TPR_median), linestyle = "dashed", color = "grey", label = "Random Cut")
-# ax.set_xlabel("FPR")
-# ax.set_ylabel("Signifance Improvement")
-
-# legend_title = "Original Signifiance = {###}"
-# plt.legend(title = legend_title, loc = "upper right")
-# plt.xscale("log")
-# plt.ylim(0, 6)
-
-
-# In[125]:
-
-
-# same plot but for the alternative data
-
-fig, ax = newplot("full", use_tex = latex_flag)
-colors = ["red", "gold", "green", "blue"]
-
-for (i, key) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "CATHODE"]):
-
-    SIG_observed = feature_SIGs_alt[key][:,0]
-    SIG_median, SIG_lower, SIG_upper, SIG_2lower, SIG_2upper = get_median_percentiles(feature_SIGs_alt[key][:,1:])
-    # SIG_median = SIG_observed
-    # SIG_lower = SIG_observed
-    # SIG_upper = SIG_observed
-    # SIG_2lower = SIG_observed
-    # SIG_2upper = SIG_observed
-    
-
-    ax.plot(fpr_thresholds_finegrained, SIG_observed, color = colors[i])
-
-    ax.plot(fpr_thresholds_finegrained, SIG_median, color = colors[i], linestyle = "dashed", alpha = 0.5)
-    ax.fill_between(fpr_thresholds_finegrained, SIG_lower, SIG_upper, alpha = 0.1, color = colors[i])
-    ax.fill_between(fpr_thresholds_finegrained, SIG_2lower, SIG_2upper, alpha = 0.1, color = colors[i])
-
-# Artificially make a legend
-plt.axhline(0, color = "Grey", linestyle = "--", label = "Expected $\pm$ 1, 2$\sigma$")
-plt.axhline(0, color = "Grey", label = "Observed")
-
-# add dummy white space to legend so that column 1 has the same height as column 2
-num_features = len(feature_SIGs.keys())
-for i in range(num_features):
-    plt.axhline(0, color = "white", label = " ")
-
-# Add the keys in a seperate column with filled color
-
-for (i, key) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d"]):
-
-    ax.hist([-1], color = colors[i], alpha = 0.25, label = key, histtype = "stepfilled")
-
-# print(feature_SIGs["CATHODE"][:,0])
-
-SIG_observed = feature_SIGs_alt["random"][:,0]
-SIG_median, SIG_lower, SIG_upper, SIG_2lower, SIG_2upper = get_median_percentiles(feature_SIGs_alt["random"][:,1:])
-
-ax.plot(fpr_thresholds_finegrained, SIG_median, linestyle = "dashed", color = "black", label = "Random Cut")
-ax.set_xlabel("FPR")
-ax.set_ylabel("Significance $Z_0 = \Phi^{-1}(1-p_0)$")
-
-
-line1 = f"{num_bins_SR -1 } Bins in SR"
-line2 = f"Fit Type: {fit_type.capitalize()} Polynomial"
-line3 = r"Muon Iso_04 $\geq$ 0.55"
-line4 = r"~6% of Original Data"
-
-starting_x = 0.075
-starting_y = 0.775
-delta_y = 0.04
-text_alpha = 0.75
-ax.text(starting_x, starting_y - 0 * delta_y, line1, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha, zorder = 10)
-ax.text(starting_x, starting_y - 1 * delta_y, line2, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha, zorder = 10)
-ax.text(starting_x, starting_y - 2 * delta_y, line3, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha, zorder = 10)
-ax.text(starting_x, starting_y - 3 * delta_y, line4, transform=ax.transAxes, fontsize=14, verticalalignment='top', alpha = text_alpha, zorder = 10)
-
-
-legend_title = r"$\bf{CMS 2016 Open Data: Dimuons}$"
-
-plt.legend(title = legend_title, loc = "upper center", ncol = 2, fontsize = 14)
-
-plt.xscale("log")
-plt.ylim(0.0, 10)
-# plt.yscale("log")
-
 
 
 
