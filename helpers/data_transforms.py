@@ -38,3 +38,11 @@ def clean_data(x):
     remove_inf = remove_nan[~np.isinf(remove_nan).any(axis=1)]
     
     return remove_inf
+
+def bootstrap_array(data_array, seed):
+    np.random.seed(seed)
+    indices_to_take = np.random.choice(range(data_array.shape[0]), size = data_array.shape[0], replace = True) 
+    return data_array[indices_to_take]
+
+
+

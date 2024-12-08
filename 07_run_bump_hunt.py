@@ -16,7 +16,7 @@ import os
 from matplotlib.backends.backend_pdf import PdfPages
 import pickle
 
-from helpers.data_transforms import clean_data
+from helpers.data_transforms import clean_data, bootstrap_array
 from helpers.BDT import *
 from helpers.physics_functions import *
 from helpers.plotting import hist_all_features_array
@@ -25,14 +25,13 @@ from helpers.evaluation import assemble_banded_datasets, convert_to_latent_space
 parser = argparse.ArgumentParser()
 
 # project-specific arguments
-parser.add_argument("-run", "--run_id", help='ID associated with the directory')
-parser.add_argument("-project", "--project_id", help='ID associated with the dataset')
-parser.add_argument("-particle", "--particle_id", help='ID associated with the dataset')
-parser.add_argument("-analysis", "--analysis_test_id", help='ID associated with the dataset')
+parser.add_argument("-workflow", "--workflow_path", default="workflow.yaml", help='ID associated with the directory')
 
 # data-specific arguments
+parser.add_argument("-bf", "--bootstrap_flow", type=int, default=0)
+parser.add_argument("-bd", "--bootstrap_data", type=int)
+
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
-parser.add_argument("-train_jet", "--train_jet", action="store_true")
 parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 
@@ -59,8 +58,6 @@ with open("workflow.yaml", "r") as file:
 
 if args.train_samesign: samesign_id = "SS"
 else: samesign_id = "OS"
-if args.train_jet: jet_id = "jet"
-else: jet_id = "nojet"
 
 # TODO: implement for inner bands
 bands = ["SBL", "SR", "SBH"]
@@ -69,23 +66,24 @@ data_dict = {}
 if args.train_samesign:
     train_data_id = "SS"
     alt_test_data_id = "OS"
-    train_data_id_title = "SS"
 else:
     train_data_id = "OS"
     alt_test_data_id = "SS"
-    train_data_id_title = "OS"
 
 working_dir = workflow["file_paths"]["working_dir"]
-processed_data_dir = workflow["file_paths"]["data_storage_dir"] +f"/projects/{args.run_id}/processed_data/"
-flow_training_dir = workflow["file_paths"]["data_storage_dir"] + f"/projects/{args.run_id}/models/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{samesign_id}_{jet_id}/{args.feature_id}/{args.configs}"
+processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/bootstrap{args.bootstrap_flow}_{samesign_id}/{args.feature_id}/{args.configs}/"
 
 # make dir to save out pickles
-pickle_save_dir = workflow["file_paths"]["data_storage_dir"]+f"/pickles/{args.feature_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}"
+pickle_save_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/pickles/bootstrap{args.bootstrap_data}_{samesign_id}/{args.feature_id}/"
 os.makedirs(pickle_save_dir, exist_ok=True)
-os.makedirs(f"{working_dir}/plots", exist_ok = True)
-    
+
+
+
+plots_dir =  workflow["file_paths"]["working_dir"] +"/plots/" + workflow["analysis_keywords"]["name"]+f"/bootstrap{args.bootstrap_data}_{samesign_id}/"
+os.makedirs(plots_dir, exist_ok = True)
 if args.run_latent:
-    pp = PdfPages(f"plots/{args.feature_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}_latent.pdf")
+    pp = PdfPages(f"{plots_dir}/{args.feature_id}_latent.pdf")
     os.environ["CUDA_VISIBLE_DEVICES"]="0"
     import torch
     # selecting appropriate device
@@ -93,7 +91,7 @@ if args.run_latent:
     print("cuda available:", CUDA)
     device = torch.device("cuda" if CUDA else "cpu")
 else:
-    pp = PdfPages(f"plots/{args.feature_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}.pdf")
+    pp = PdfPages(f"{plots_dir}/{args.feature_id}.pdf")
     
     
 
@@ -114,23 +112,22 @@ for key in train_samples_dict.keys():
 
 # load in the data corresponding to the train id
 # we actually want the "test band" here -- train is just for flow
-with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}_test_band_data", "rb") as infile: 
-    test_data_dict = pickle.load(infile)
-
+with open(f"{processed_data_dir}/bootstrap{args.bootstrap_data}_{train_data_id}_test_band_data", "rb") as ifile:
+    test_data_dict = pickle.load(ifile)
 # load in the alternative data
-with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{alt_test_data_id}_{jet_id}_test_band_data", "rb") as infile: 
-    alt_test_data_dict = pickle.load(infile)
+with open(f"{processed_data_dir}/bootstrap{args.bootstrap_data}_{alt_test_data_id}_test_band_data", "rb") as ifile:
+    alt_test_data_dict = pickle.load(ifile)
 
 if args.use_extra_data:
-    with open(f"{processed_data_dir}/{args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}_train_band_data", "rb") as infile: 
-        ROC_test_data_1_dict = pickle.load(infile)
+    with open(f"{processed_data_dir}/bootstrap{args.bootstrap_data}_{train_data_id}_train_band_data", "rb") as ifile:
+        ROC_test_data_1_dict = pickle.load(ifile)
+
     
 # ROC set 2 is evaluated on a higher stats version of the flow samples (so may be same or opp sign)
 
-print(f"Loading classifier train samples from {args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}")
-print(f"Loading classifier train data from {args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}")
-print(f"Loading alternative test data from {args.project_id}_{args.particle_id}_{args.analysis_test_id}_{alt_test_data_id}_{jet_id}")
-print(f"Loading ROC test data from {args.project_id}_{args.particle_id}_{args.analysis_test_id}_{train_data_id_title}_{jet_id}")
+print(f"Loading classifier train samples from {processed_data_dir}/bootstrap{args.bootstrap_data}_{train_data_id}_test_band_data")
+print(f"Loading classifier train data from {processed_data_dir}/bootstrap{args.bootstrap_data}_{train_data_id}_test_band_data")
+print(f"Loading alternative test data from {processed_data_dir}/bootstrap{args.bootstrap_data}_{alt_test_data_id}_test_band_dat")
 print()
 
 with open(f"{flow_training_dir}/seed1/configs.txt", "rb") as infile: 
@@ -199,14 +196,11 @@ all_scores_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
 all_alt_data_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
 all_alt_scores_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
 
-def bootstrap_array(data_array):
-    indices_to_take = np.random.choice(range(data_array.shape[0]), size = data_array.shape[0], replace = True) 
-    return data_array[indices_to_take]
+
 
 for pseudo_e in range(args.start, args.stop):
     
     print(f"On pseudoexperiment {pseudo_e} (of {args.start} to {args.stop})...")
-    np.random.seed(pseudo_e) # set seed for data bootstrapping
     
     if pseudo_e == 0:
         print("Not bootstrapping data")
@@ -215,20 +209,21 @@ for pseudo_e in range(args.start, args.stop):
             loc_ROC_test_events_1 = np.vstack([banded_ROC_test_data["SR"],banded_ROC_test_data["SBL"],banded_ROC_test_data["SBH"]])
         loc_ROC_test_samples_2 = np.vstack([train_samples_dict["SR_samples_ROC"],train_samples_dict["SBL_samples_ROC"],train_samples_dict["SBH_samples_ROC"]])
         loc_SB_test_set = np.vstack([clean_data(banded_test_data["SBL"]),clean_data(banded_test_data["SBH"])])
-        loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
         loc_SR_data = clean_data(banded_test_data["SR"])
+        loc_FPR_val_set = train_samples_dict["SR_samples_validation"]
+        
         loc_SR_samples = clean_data(train_samples_dict["SR_samples"])
 
     else:
          #assemble the bootstrapped datasets
         print("Bootstrapping data")
         
-        loc_alt_test_set = bootstrap_array(np.vstack([banded_alt_test_data["SR"],banded_alt_test_data["SBL"],banded_alt_test_data["SBH"]]))
+        loc_alt_test_set = bootstrap_array(np.vstack([banded_alt_test_data["SR"],banded_alt_test_data["SBL"],banded_alt_test_data["SBH"]]), pseudo_e)
         if args.use_extra_data:
-            loc_ROC_test_events_1 = bootstrap_array(np.vstack([banded_ROC_test_data["SR"],banded_ROC_test_data["SBL"],banded_ROC_test_data["SBH"]]))
-        loc_ROC_test_samples_2 = bootstrap_array(np.vstack([train_samples_dict["SR_samples_ROC"],train_samples_dict["SBL_samples_ROC"],train_samples_dict["SBH_samples_ROC"]]))
+            loc_ROC_test_events_1 = bootstrap_array(np.vstack([banded_ROC_test_data["SR"],banded_ROC_test_data["SBL"],banded_ROC_test_data["SBH"]]), pseudo_e)
+        loc_ROC_test_samples_2 = bootstrap_array(np.vstack([train_samples_dict["SR_samples_ROC"],train_samples_dict["SBL_samples_ROC"],train_samples_dict["SBH_samples_ROC"]]), pseudo_e)
 
-        bootstrapped_loc_test_set = bootstrap_array(np.vstack([banded_test_data["SR"],banded_test_data["SBL"],banded_test_data["SBH"]]))                     
+        bootstrapped_loc_test_set = bootstrap_array(clean_data(np.vstack([banded_test_data["SR"],banded_test_data["SBL"],banded_test_data["SBH"]])), pseudo_e)                   
         in_SR = (bootstrapped_loc_test_set[:,-1] >= SR_min_rescaled) & (bootstrapped_loc_test_set[:,-1] <= SR_max_rescaled)
         loc_SR_data = bootstrapped_loc_test_set[in_SR]
         loc_SB_test_set = bootstrapped_loc_test_set[~in_SR]                       
