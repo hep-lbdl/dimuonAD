@@ -41,7 +41,7 @@ parser.add_argument('-seeds', '--seeds', default="1")
 parser.add_argument("-c", "--configs", default="CATHODE_8")
 
 # BDT-specific arguments
-parser.add_argument("-ne", "--num_to_ensemble", default=10, type=int) # how many BDTs to train for a single pseudoexperiment
+parser.add_argument("-ne", "--num_to_ensemble", default=100, type=int) # how many BDTs to train for a single pseudoexperiment
 parser.add_argument("-nf", "--n_folds", default=5, type=int) # how many BDTs to train for a single pseudoexperiment
 parser.add_argument("-start", "--start", default=0, type=int)  # how many pseudoexperiments to run
 parser.add_argument("-stop", "--stop", default=1, type=int) 
@@ -54,7 +54,7 @@ args = parser.parse_args()
 device = "cpu"
 
 import yaml
-with open("workflow.yaml", "r") as file:
+with open(f"{args.workflow_path}.yaml", "r") as file:
     workflow = yaml.safe_load(file)
 
 if args.train_samesign: samesign_id = "SS"

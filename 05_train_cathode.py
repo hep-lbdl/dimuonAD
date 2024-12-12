@@ -23,11 +23,13 @@ parser.add_argument("-workflow", "--workflow_path", default="workflow.yaml", hel
 
 # data-specific arguments
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
-parser.add_argument("-bootstrap", "--bootstrap", type=int)
+parser.add_argument("-bootstrap", "--bootstrap", default="bootstrap0")
 
 parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 parser.add_argument('-premade_bins', '--premade_bins', action="store_true", default=False, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
+parser.add_argument('-win', '--window_index', type=int, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
+
 parser.add_argument('--use_inner_bands', action="store_true", default=False)
 #parser.add_argument('--use_extra_data', action="store_true", default=False)
 
@@ -66,7 +68,7 @@ num_features = len(feature_set) - 1 # context doesn't count
 
 
 import yaml
-with open(args.workflow_path, "r") as file:
+with open(f"{args.workflow_path}.yaml", "r") as file:
     workflow = yaml.safe_load(file)
 
 print(f"Feature id: {args.feature_id}")
@@ -77,7 +79,7 @@ print(f"Configs: {args.configs}")
 working_dir = workflow["file_paths"]["working_dir"]
 path_to_config_file = f"{working_dir}/configs/{args.configs}.yml"
 processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
-flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/bootstrap{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs}/seed{args.seed}"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs}/seed{args.seed}"
 os.makedirs(flow_training_dir, exist_ok=True)
 
 
@@ -103,7 +105,7 @@ LOAD IN DEDICATED TRAIN DATA FOR FLOW
 """
 
 # dataset for the bump hunt only
-with open(f"{processed_data_dir}/bootstrap{args.bootstrap}_{samesign_id}_test_band_data", "rb") as ifile:
+with open(f"{processed_data_dir}/{args.bootstrap}_{samesign_id}_test_band_data", "rb") as ifile:
     proc_dict_s_inj_test = pickle.load(ifile)
 """
 if args.use_extra_data:
@@ -215,8 +217,7 @@ data_dict["SBH_samples_ROC"] =  get_flow_samples(eval_model, data_dict["SBH"][:,
 masses_to_fit = np.hstack((data_dict["SBL"][:,-1], data_dict["SBH"][:,-1]))
 
 if args.premade_bins:
-    window_index = int(args.project_id.split("_")[1])
-    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins_for_scan(processed_data_dir, window_index, scale_bins = True)
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins_for_scan(processed_data_dir, args.window_index, scale_bins = True)
     SR_left, SR_right = plot_bins_SR[0], plot_bins_SR[-1]
     SB_left, SB_right = plot_bins_left[0], plot_bins_right[-1]
 else:
@@ -240,6 +241,8 @@ mass_samples = get_mass_samples(SR_left, SR_right, bkg_fit_type, n_SR_samples, p
 
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
+
+plt.savefig(f"{flow_training_dir}/bkg_fit_{bkg_fit_type}")
 plt.savefig(f"{flow_training_dir}/bkg_fit_{bkg_fit_type}_{args.num_bins_SR}")
          
 

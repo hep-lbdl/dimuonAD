@@ -197,15 +197,10 @@ def run_BDT_bump_hunt(flow_samples_SR, data_samples_SR, data_samples_SB, num_fol
                 pdf.savefig()
             else:
                 plt.show()
-                
-        
-            
             
         """
         AVERAGE OVER ENSEMBLE
-        """
-        
-        
+        """     
         if take_ensemble_avg:
             scores_splits[i_fold] = np.mean(scores_fold, axis = 1)
             for alt_id in alt_test_sets_data.keys():

@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-workflow", "--workflow_path", default="workflow.yaml", help='ID associated with the directory')
 
 # data-specific arguments
-parser.add_argument("-bootstrap", "--bootstrap", type=int)
+parser.add_argument("-bootstrap", "--bootstrap")
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
 parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
@@ -37,13 +37,13 @@ else: samesign_id = "OS"
 
 
 import yaml
-with open("workflow.yaml", "r") as file:
+with open(f"{args.workflow_path}.yaml", "r") as file:
     workflow = yaml.safe_load(file)
 
 working_dir = workflow["file_paths"]["working_dir"]
 path_to_config_file = f"{working_dir}/configs/{args.configs}.yml"
 processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
-flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/bootstrap{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs}/"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs}/"
 
 
 # load in all the flow models across different seeds
@@ -123,7 +123,7 @@ ks_dists_samples = get_kl_dist(data_dict["SB"], data_dict["SB_samples"])
 ks_dists_gaussians = get_kl_dist(np.random.normal(size = data_dict["SB"].shape), np.random.normal(size = data_dict["SB_samples"].shape))
 
 
-validations_dir =  workflow["file_paths"]["working_dir"] +"/flow_training_validations/" + workflow["analysis_keywords"]["name"]+f"/bootstrap{args.bootstrap}_{samesign_id}/"
+validations_dir =  workflow["file_paths"]["working_dir"] +"/flow_training_validations/" + workflow["analysis_keywords"]["name"]+f"/{args.bootstrap}_{samesign_id}/"
 os.makedirs(validations_dir, exist_ok = True)
 
 with open(f"{validations_dir}/{args.feature_id}.txt", "w") as ofile:

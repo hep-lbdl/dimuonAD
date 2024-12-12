@@ -87,11 +87,11 @@ def assemble_banded_datasets(data_dict, feature_set, bands):
     banded_data = {}
     
     for b in bands:
-        num_events_band = data_dict[b]["s_inj_data"]["dimu_mass"].shape[0]
+        num_events_band = data_dict[b]["dimu_mass"].shape[0]
         events_band = np.empty((num_events_band, len(feature_set)))
         for i, feat in enumerate(feature_set):
             # default test set
-            events_band[:,i] = data_dict[b]["s_inj_data"][feat].reshape(-1,)
+            events_band[:,i] = data_dict[b][feat].reshape(-1,)
         banded_data[b] = events_band
         
     return banded_data

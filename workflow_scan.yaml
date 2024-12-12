@@ -2,32 +2,20 @@ file_paths:
     working_dir: "/global/homes/r/rmastand/dimuonAD/"
     data_storage_dir: "/global/cfs/cdirs/m3246/rmastand/dimuonAD/"
 
+    
 analysis_keywords:
-    name: "upsilon_iso_12_03"
-    particle: upsilon
+    name: "lowmass_scan_12_12"
     analysis_cuts: 
         lower:
-            mu0_iso04: 0.55
-            mu1_iso04: 0.55
-            mu0_pt: 17
-            mu1_pt: 8
-            HLT_TrkMu15_DoubleTrkMu5NoFiltersNoVtx: 1
+            mu0_pt: 20
+            mu1_pt: 10
+            HLT_Mu17_Mu8: 1
+            mu0_eta: -2.1
+            mu1_eta: -2.1
         upper: 
+            mu0_eta: 2.1
+            mu1_eta: 2.1
     dataset_id: lowmass
-    
-
-window_definitions:
-    upsilon: 
-        SB_left: 5
-        SR_left: 9
-        SR_right: 10.6
-        SB_right: 16
-    eta:
-        SB_left: 0.3
-        SR_left: 0.525
-        SR_right: 0.569
-        SB_right: 0.72
-
 
 
 
