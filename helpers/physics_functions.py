@@ -169,7 +169,7 @@ def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR=6, binning="linea
 def get_bins_for_scan(path_to_bin_defs_folder, window_index, scale_bins=False):
     
     """
-    If this code is run on preprocessed data, then the bin definitions need to be modified with a scalar
+    If this code is run on preprocessed data, then the bin definitions need to be modified with a scaler
     """
     with open(f"{path_to_bin_defs_folder}/bin_definitions", "rb") as infile:
         bin_definitions = pickle.load(infile)
@@ -188,7 +188,7 @@ def get_bins_for_scan(path_to_bin_defs_folder, window_index, scale_bins=False):
     plot_bins_all = np.concatenate([plot_bins_left[:-1], plot_bins_SR, plot_bins_right[1:]])
     
     if scale_bins:
-        with open(f"{path_to_bin_defs_folder}/mass_scaler_{window_index}", "rb") as infile:
+        with open(f"{path_to_bin_defs_folder}/mass_scaler_window{window_index}", "rb") as infile:
             mass_scaler = pickle.load(infile)
         plot_bins_all = mass_scaler.transform(np.array(plot_bins_all).reshape(-1,1)).reshape(-1,)
         plot_bins_SR = mass_scaler.transform(np.array(plot_bins_SR).reshape(-1,1)).reshape(-1,)
@@ -335,7 +335,7 @@ def calc_significance(masses, fit_function, plot_bins_SR, plot_centers_SR, SR_le
 
 
 
-def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_cutoffs_by_fold, mass_scalar, fit_type, title, SB_left, SR_left, SR_right, SB_right, n_folds= 5, take_score_avg=True):
+def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_cutoffs_by_fold, mass_scaler, fit_type, title, SB_left, SR_left, SR_right, SB_right, n_folds= 5, take_score_avg=True):
     
     if fit_type == "cubic": fit_function = bkg_fit_cubic
     elif fit_type == "quintic": fit_function = bkg_fit_quintic
@@ -352,7 +352,7 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
         filtered_masses = []
 
         for i_fold in range(n_folds):
-            loc_true_masses = mass_scalar.inverse_transform(np.array(data_dict_by_fold[i_fold][:,-1]).reshape(-1,1))
+            loc_true_masses = mass_scaler.inverse_transform(np.array(data_dict_by_fold[i_fold][:,-1]).reshape(-1,1))
             if take_score_avg:
                 loc_scores = np.mean(scores_dict_by_fold[i_fold], axis = 1)
             else:
