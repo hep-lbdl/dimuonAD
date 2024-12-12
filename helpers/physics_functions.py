@@ -56,6 +56,10 @@ def calculate_deltaR(phi_0, phi_1, eta_0, eta_1):
 STATS AND CURVE FITTING
 """
 
+def ReLU(x):
+    return np.maximum(0, x)
+
+
 def bkg_fit_cubic(x, a0, a1, a2, a3):
     return a0 + a1*x + a2*x**2 + a3*x**3
 
@@ -395,29 +399,47 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
 
 def calculate_test_statistic(masses, fit_function, fit_type, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, pcov, ONE_SIDED = True, verbose = False):
 
-    # ########## Expected Counts -- Needed to construct the likelihoods ##########
-
-    # Background Fit + Uncertainty
+ # Background Fit + Uncertainty
     B_function = fit_function(plot_centers_SR, *popt) 
 
     n = 1000
     temp_params = np.random.multivariate_normal(popt, pcov, n)
     y = np.array([fit_function(plot_centers_SR, *p) for p in temp_params])
-    B_error = get_errors_bkg_fit_ratio(popt, pcov, plot_centers_SR, fit_type) 
+    # B_error = get_errors_bkg_fit_ratio(popt, pcov, plot_centers_SR, fit_type) 
+    
 
     # Null Hypothesis: The data comes from a single bin with mean B, and the Gaussian error on that mean is B_error
     total_B = sum(B_function)
-    total_B_error = np.sqrt(np.sum(B_error**2))
+    total_Bs = np.array([sum(y[i]) for i in range(n)])
+    total_Bs = np.where(total_Bs < 0, 0, total_Bs)
+    total_B_error = np.std(total_Bs)
 
     # Alternative hypothesis: The data comes from a single bin with mean S+B, and the Gaussian error on that mean is B_error
     num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
     total_S = num_total_in_SR - total_B
     total_S_error = np.sqrt(total_B_error**2)
 
-    # If one-sided limits, then automatically return q_0 = 0
-    if ONE_SIDED and (total_S < 0 or total_B < 0):
-        q_0 = 0
-        return total_S, total_B, q_0
+
+    if total_S < 0 or total_B < 0:
+        q0 = 0
+        return total_S, total_B, q0
+
+    # # Calculate Test Statistic
+    # n = num_total_in_SR
+    # c = total_B
+    # sigma = total_B_error
+
+    # sqrt_factor = np.sqrt(c**2 - 2*c*sigma**2 + sigma**4 + 4*n*sigma**2)
+    # term1 = n + 0.5*(-c + sigma**2 - sqrt_factor)
+    # term2 = -(-c + 0.5*(c - sigma**2 + sqrt_factor))**2 / (2*(sigma**2 ))
+    # term3 = -n*np.log(n)
+    # term4 = n * np.log(0.5 * (c - sigma**2 + sqrt_factor))
+    # q0 = -2 * (term1 + term2 + term3 + term4)
+
+    # # print(f"c = {c}, sigma = {sigma}, n = {n}, sqrt_factor = {sqrt_factor}, log arg = {0.5*(c - sigma**2 + sqrt_factor)}")
+
+
+    # return total_S, total_B, q0 
 
 
     ########## Likelihoods ##########
@@ -429,7 +451,7 @@ def calculate_test_statistic(masses, fit_function, fit_type, plot_bins_SR, plot_
     def null_likelihood_function(bprime):
         return likelihood_function(bprime, 0, num_total_in_SR)
 
-    minimization = minimize(null_likelihood_function, total_B + total_B_error, bounds = [(0, None)], tol = 0.1)
+    minimization = minimize(null_likelihood_function, total_B + total_B_error**2, bounds = [(0, None)])
     post_fit_B = minimization.x[0]
     log_B = likelihood_function(post_fit_B, 0, num_total_in_SR)
     if verbose:
@@ -440,6 +462,7 @@ def calculate_test_statistic(masses, fit_function, fit_type, plot_bins_SR, plot_
 
     # Calculate the test statistic
     q_0 = log_B - log_S_plus_B
+    total_S = num_total_in_SR - post_fit_B
     return total_S, total_B, q_0
      
 
