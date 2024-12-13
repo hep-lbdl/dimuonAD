@@ -225,25 +225,7 @@ def select_top_events_fold(true_masses, scores, score_cutoff, plot_bins_left, pl
 def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB, SBL_rescale=None, SBH_rescale=None):
     
 
-    if fit_type == "cubic":
-        p0  = [5000, -20000, 30000, -10000]
-        fit_function = bkg_fit_cubic
-        n_dof_fit = 4
 
-    elif fit_type == "quintic":
-        p0  = [5000, -20000, 30000, -10000, 0, 0]
-        fit_function = bkg_fit_quintic
-        n_dof_fit = 6
-        
-    elif fit_type == "septic":
-        p0  = [5000, -20000, 30000, -10000, 0, 0, 0, 0]
-        fit_function = bkg_fit_septic
-        n_dof_fit = 8
-
-    elif fit_type == "ratio":
-        p0  = [100,1000,.1]
-        fit_function = bkg_fit_ratio
-        n_dof_fit = 3
         
     # get left SB data
     loc_bkg_left = masses[masses < SR_left]
@@ -258,6 +240,29 @@ def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bi
         y_vals = np.concatenate((SBL_rescale*y_vals_left, SBH_rescale*y_vals_right))
     else: 
         y_vals = np.concatenate((y_vals_left, y_vals_right))
+
+    average_bin_count = np.mean(y_vals)
+
+
+    if fit_type == "cubic":
+        p0  = [average_bin_count, 0, 0, 0]
+        fit_function = bkg_fit_cubic
+        n_dof_fit = 4
+
+    elif fit_type == "quintic":
+        p0  = [average_bin_count, 0, 0, 0, 0, 0]
+        fit_function = bkg_fit_quintic
+        n_dof_fit = 6
+        
+    elif fit_type == "septic":
+        p0  = [average_bin_count, 0, 0, 0, 0, 0, 0, 0]
+        fit_function = bkg_fit_septic
+        n_dof_fit = 8
+
+    elif fit_type == "ratio":
+        p0  = [100,1000,.1]
+        fit_function = bkg_fit_ratio
+        n_dof_fit = 3
 
     # fit the SB data
     y_err = np.sqrt(y_vals + 1)
