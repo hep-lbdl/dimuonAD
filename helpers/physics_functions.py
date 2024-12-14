@@ -14,7 +14,6 @@ muon_mass = 0.1056583755 # GeV
 def assemble_m_inv(a_M, a_pt, a_eta, a_phi, b_M, b_pt, b_eta, b_phi):
     # computes system of mother particle
     
-
     a_E = np.sqrt(a_M**2 + (a_pt*np.cosh(a_eta))**2)
     b_E = np.sqrt(b_M**2 + (b_pt*np.cosh(b_eta))**2)
 
@@ -31,16 +30,15 @@ def assemble_m_inv(a_M, a_pt, a_eta, a_phi, b_M, b_pt, b_eta, b_phi):
     mother_px = a_px + b_px
     mother_py = a_py + b_py
     mother_pz = a_pz + b_pz
-    
-    mother_M = np.sqrt(mother_E**2 - mother_px**2 - mother_py**2 - mother_pz**2)
-    
+    M_sq_cands = mother_E**2 - mother_px**2 - mother_py**2 - mother_pz**2
+    mother_M = np.sqrt(M_sq_cands)
     mother_pt = np.sqrt(mother_px**2 + mother_py**2)
     mother_eta = np.arcsinh(mother_pz/mother_pt)
     mother_phi = np.arctan(mother_py/mother_px)
+
+    good_event_indices = (M_sq_cands >= 0) & (mother_pt > 0)
     
-
-    return mother_M, mother_pt, mother_eta, mother_phi
-
+    return mother_M, mother_pt, mother_eta, mother_phi, good_event_indices
 
 def calculate_deltaR(phi_0, phi_1, eta_0, eta_1):
     
@@ -225,25 +223,7 @@ def select_top_events_fold(true_masses, scores, score_cutoff, plot_bins_left, pl
 def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB, SBL_rescale=None, SBH_rescale=None):
     
 
-    if fit_type == "cubic":
-        p0  = [5000, -20000, 30000, -10000]
-        fit_function = bkg_fit_cubic
-        n_dof_fit = 4
 
-    elif fit_type == "quintic":
-        p0  = [5000, -20000, 30000, -10000, 0, 0]
-        fit_function = bkg_fit_quintic
-        n_dof_fit = 6
-        
-    elif fit_type == "septic":
-        p0  = [5000, -20000, 30000, -10000, 0, 0, 0, 0]
-        fit_function = bkg_fit_septic
-        n_dof_fit = 8
-
-    elif fit_type == "ratio":
-        p0  = [100,1000,.1]
-        fit_function = bkg_fit_ratio
-        n_dof_fit = 3
         
     # get left SB data
     loc_bkg_left = masses[masses < SR_left]
@@ -258,6 +238,29 @@ def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bi
         y_vals = np.concatenate((SBL_rescale*y_vals_left, SBH_rescale*y_vals_right))
     else: 
         y_vals = np.concatenate((y_vals_left, y_vals_right))
+
+    average_bin_count = np.mean(y_vals)
+
+
+    if fit_type == "cubic":
+        p0  = [average_bin_count, 0, 0, 0]
+        fit_function = bkg_fit_cubic
+        n_dof_fit = 4
+
+    elif fit_type == "quintic":
+        p0  = [average_bin_count, 0, 0, 0, 0, 0]
+        fit_function = bkg_fit_quintic
+        n_dof_fit = 6
+        
+    elif fit_type == "septic":
+        p0  = [average_bin_count, 0, 0, 0, 0, 0, 0, 0]
+        fit_function = bkg_fit_septic
+        n_dof_fit = 8
+
+    elif fit_type == "ratio":
+        p0  = [100,1000,.1]
+        fit_function = bkg_fit_ratio
+        n_dof_fit = 3
 
     # fit the SB data
     y_err = np.sqrt(y_vals + 1)
