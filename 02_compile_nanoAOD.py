@@ -1,3 +1,7 @@
+"""
+TODO: this function will throw a runtime warning if a negative invariant dimuon mass is calculated or the dimuon pT <= 0. This is taken care of in the code and so the warning can be safely ignored.
+"""
+
 import awkward as ak
 import os
 import pickle
@@ -124,14 +128,14 @@ for i in range(num_files):
     def pull_tight_muons(feature):
         return loc_mu_feature[feature][loc_mu_feature["Muon_tightId"]][event_filter]
     
-    dimu_mass, dimu_pt, dimu_eta, dimu_phi = assemble_m_inv(muon_mass, pull_tight_muons("Muon_pt")[:,0], pull_tight_muons("Muon_eta")[:,0], pull_tight_muons("Muon_phi")[:,0], 
+    dimu_mass, dimu_pt, dimu_eta, dimu_phi, good_event_inds = assemble_m_inv(muon_mass, pull_tight_muons("Muon_pt")[:,0], pull_tight_muons("Muon_eta")[:,0], pull_tight_muons("Muon_phi")[:,0], 
                                    muon_mass, pull_tight_muons("Muon_pt")[:,1],  pull_tight_muons("Muon_eta")[:,1],  pull_tight_muons("Muon_phi")[:,1])
     
     total_charge = pull_tight_muons("Muon_charge")[:,0] + pull_tight_muons("Muon_charge")[:,1]
     
     # filters for opp-sign and same-sign muons; must apply *after* the event filter
-    samesign_filter = np.abs(total_charge) == 2
-    oppsign_filter = np.abs(total_charge) == 0
+    samesign_filter = np.logical_and(np.abs(total_charge) == 2, good_event_inds)
+    oppsign_filter = np.logical_and(np.abs(total_charge) == 0, good_event_inds)
 
     # variables that have already had the event filter applied
     all_data["dimu_mass"].append(dimu_mass[oppsign_filter].to_numpy(allow_missing = True))
@@ -151,7 +155,8 @@ for i in range(num_files):
         except:
             trigger_data = ak.Array([False for i in range(sum(event_filter))])
         all_data[f"{mv}"].append(trigger_data[oppsign_filter].to_numpy(allow_missing = True))
-        all_data[f"{mv}_samesign"].append(trigger_data[samesign_filter].to_numpy(allow_missing = True))
+        if args.run_samesign:
+            all_data[f"{mv}_samesign"].append(trigger_data[samesign_filter].to_numpy(allow_missing = True))
     
     all_data["n_jets"].append(ak.count(loc_jet_feature["Jet_mass"][event_filter], axis = 1)[oppsign_filter].to_numpy(allow_missing = True))
     if args.run_samesign:
@@ -178,7 +183,15 @@ for i in range(num_files):
 
 
 print("Done loading in files.")
+
     
+for key in all_data.keys():
+    
+    all_data[key] = np.hstack(all_data[key])
+    print("   ", key, all_data[key].shape)
+print()
+
+
 all_data["mumu_deltaR"] = calculate_deltaR(all_data["mu0_phi"], all_data["mu1_phi"], all_data["mu0_eta"], all_data["mu1_eta"])
 all_data["mumu_deltapT"] = all_data["mu0_pt"] - all_data["mu1_pt"]
 
@@ -191,13 +204,8 @@ if args.run_samesign:
     if args.run_jet:
         all_data["dimujet_deltaR_samesign"] = calculate_deltaR(all_data["dimu_phi_samesign"], all_data["hardest_jet_phi_samesign"], all_data["dimu_eta_samesign"], all_data["hardest_jet_eta_samesign"])
 
-
 print("All variables compiled:") 
-for key in all_data.keys():
-    
-    all_data[key] = np.hstack(all_data[key])
-    print("   ", key, all_data[key].shape)
-print()
+
         
 if args.run_jet:
     save_id = f"{args.data_id}_jet"

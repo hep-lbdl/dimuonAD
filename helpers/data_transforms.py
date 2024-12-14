@@ -1,24 +1,28 @@
 import numpy as np
 
-epsilon = 1e-10
+epsilon = 1e-4
 
-def logit_transform(x, all_min, all_max):
+def logit_transform(x, all_min, all_max, cushion ):
+
+    epsilon = 1e-6
     
     x_norm = (x-all_min)/(all_max-all_min)
-    x_norm = 0.98*x_norm + 0.01
-    #x_norm = x_norm[(x_norm != 0) & (x_norm != 1)]
-    logit = np.log(x_norm/(1.0-x_norm+epsilon)+epsilon)
-    #print(np.sum(np.isnan(logit)))
-    #logit = logit[~np.isnan(logit)]
-    return logit
+    x_norm = (1.0 - 2.0*cushion)*x_norm + cushion
+    logit_arguments = (x_norm/(1.0-x_norm+epsilon)) + epsilon
+    num_invalid_entries = sum(logit_arguments <= 0)
+    if num_invalid_entries > 0:
+        print("Invalid log. Try again with larger cushion")
+        return None
+    else:
+        logit = np.log(x_norm/(1.0-x_norm+epsilon))
+        return logit
 
-
-def scaled_to_physical_transform(scaled_x, preproc_info):
+def scaled_to_physical_transform(scaled_x, preproc_info, cushion):
     
     unscaled_x =  scaled_x*preproc_info["std"] + preproc_info["mean"]
     #inverse logit
     x_norm = np.exp(unscaled_x) / (1.0 + np.exp(unscaled_x))
-    x_norm = (x_norm - 0.01) / 0.98
+    x_norm = (x_norm - cushion) / (1.0 - 2.0*cushion)
     
     return x_norm*(preproc_info["max"]-preproc_info["min"]) + preproc_info["min"]
 

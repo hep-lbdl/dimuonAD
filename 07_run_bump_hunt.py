@@ -25,7 +25,7 @@ from helpers.evaluation import assemble_banded_datasets, convert_to_latent_space
 parser = argparse.ArgumentParser()
 
 # project-specific arguments
-parser.add_argument("-workflow", "--workflow_path", default="workflow.yaml", help='ID associated with the directory')
+parser.add_argument("-workflow", "--workflow_path", default="workflow", help='ID associated with the directory')
 
 # data-specific arguments
 parser.add_argument("-bf", "--bootstrap_flow", type=int, default=0)

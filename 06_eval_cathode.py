@@ -11,7 +11,7 @@ from helpers.data_transforms import clean_data
 parser = argparse.ArgumentParser()
 
 # project-specific arguments
-parser.add_argument("-workflow", "--workflow_path", default="workflow.yaml", help='ID associated with the directory')
+parser.add_argument("-workflow", "--workflow_path", default="workflow", help='ID associated with the directory')
 
 # data-specific arguments
 parser.add_argument("-bootstrap", "--bootstrap")
@@ -54,7 +54,7 @@ for seed in seeds_list:
     with open(path_to_samples, "rb") as infile: 
         loc_data_dict = pickle.load(infile)
         for key in data_dict.keys():
-            if "samples" in key or seed == 1:
+            if "samples" in key or seed in [1,6]:
                 data_dict[key].append(loc_data_dict[key])
 
 for key in data_dict.keys():

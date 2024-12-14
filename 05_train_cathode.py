@@ -19,7 +19,7 @@ from helpers.flow_sampling import *
 parser = argparse.ArgumentParser()
 
 # project-specific arguments
-parser.add_argument("-workflow", "--workflow_path", default="workflow.yaml", help='ID associated with the directory')
+parser.add_argument("-workflow", "--workflow_path", default="workflow", help='ID associated with the directory')
 
 # data-specific arguments
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
@@ -242,7 +242,6 @@ mass_samples = get_mass_samples(SR_left, SR_right, bkg_fit_type, n_SR_samples, p
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
 
-plt.savefig(f"{flow_training_dir}/bkg_fit_{bkg_fit_type}")
 plt.savefig(f"{flow_training_dir}/bkg_fit_{bkg_fit_type}_{args.num_bins_SR}")
          
 
