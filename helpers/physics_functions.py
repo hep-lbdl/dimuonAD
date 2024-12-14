@@ -14,7 +14,6 @@ muon_mass = 0.1056583755 # GeV
 def assemble_m_inv(a_M, a_pt, a_eta, a_phi, b_M, b_pt, b_eta, b_phi):
     # computes system of mother particle
     
-
     a_E = np.sqrt(a_M**2 + (a_pt*np.cosh(a_eta))**2)
     b_E = np.sqrt(b_M**2 + (b_pt*np.cosh(b_eta))**2)
 
@@ -31,16 +30,15 @@ def assemble_m_inv(a_M, a_pt, a_eta, a_phi, b_M, b_pt, b_eta, b_phi):
     mother_px = a_px + b_px
     mother_py = a_py + b_py
     mother_pz = a_pz + b_pz
-    
-    mother_M = np.sqrt(mother_E**2 - mother_px**2 - mother_py**2 - mother_pz**2)
-    
+    M_sq_cands = mother_E**2 - mother_px**2 - mother_py**2 - mother_pz**2
+    mother_M = np.sqrt(M_sq_cands)
     mother_pt = np.sqrt(mother_px**2 + mother_py**2)
     mother_eta = np.arcsinh(mother_pz/mother_pt)
     mother_phi = np.arctan(mother_py/mother_px)
+
+    good_event_indices = (M_sq_cands >= 0) & (mother_pt > 0)
     
-
-    return mother_M, mother_pt, mother_eta, mother_phi
-
+    return mother_M, mother_pt, mother_eta, mother_phi, good_event_indices
 
 def calculate_deltaR(phi_0, phi_1, eta_0, eta_1):
     
