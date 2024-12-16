@@ -399,77 +399,153 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
     
 
 
+def parametric_fit(x, *theta):
 
-def calculate_test_statistic(masses, fit_function, fit_type, plot_bins_SR, plot_centers_SR, SR_left, SR_right, popt, pcov, ONE_SIDED = True, verbose = False):
+    degree = len(theta) - 1
+    y = np.zeros_like(x)
+    for i in range(degree + 1):
+        y += theta[i] * (x)**i
 
- # Background Fit + Uncertainty
-    B_function = fit_function(plot_centers_SR, *popt) 
+    return y
 
-    n = 1000
-    temp_params = np.random.multivariate_normal(popt, pcov, n)
-    y = np.array([fit_function(plot_centers_SR, *p) for p in temp_params])
-    # B_error = get_errors_bkg_fit_ratio(popt, pcov, plot_centers_SR, fit_type) 
+def integral(lower, upper, bin_width, *theta):
+
+    degree = len(theta) - 1
+    integral = 0
+    for i in range(degree + 1):
+        integral += theta[i] / (i + 1) * ((upper)**(i + 1) - (lower)**(i + 1))
+
+    return integral / bin_width
+
+
+def likelihood(data, s, SR_left, SR_right, SB_left, SB_right, *theta):
+
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
+    plot_centers_left = 0.5*(plot_bins_left[1:] + plot_bins_left[:-1])
+    plot_centers_right = 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])
+
+
+    # get left SB data
+    loc_bkg_left = data[data < SR_left]
+    y_vals_left, _ = np.histogram(loc_bkg_left, bins = plot_bins_left, density = False)
+
+    # get right SB data
+    loc_bkg_right = data[data > SR_right]
+    y_vals_right, _ = np.histogram(loc_bkg_right, bins = plot_bins_right, density = False)
+
+    # Log poisson likelihood for the SB bins
+    log_likelihood = 0
+    fit_vals_left = parametric_fit(plot_centers_left, *theta)
+    fit_vals_right = parametric_fit(plot_centers_right, *theta)
+    for i in range(len(y_vals_left)):
+        log_likelihood += stats.poisson.logpmf(y_vals_left[i], fit_vals_left[i])
+    for j in range(len(y_vals_right)):
+        log_likelihood += stats.poisson.logpmf(y_vals_right[j], fit_vals_right[j])
+
+    # get SR data
+    bin_width = plot_bins_SR[1] - plot_bins_SR[0]
+    loc_data = data[np.logical_and(data > SR_left, data < SR_right)]
+    num_SR = len(loc_data)
+    num_bkg = integral(SR_left, SR_right, bin_width, *theta)
+
+    # Log poisson likelihood for the SR
+    s_prime = s * (s > 0) # Ensure positive signal. If negative, this will cancel out in the likelihood ratio
+    log_likelihood += stats.poisson.logpmf(num_SR, num_bkg + s_prime)
+
+    return -2 * log_likelihood
+    
+def cheat_likelihood(data, SR_left, SR_right, SB_left, SB_right, *theta):
+
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
+    plot_centers_left = 0.5*(plot_bins_left[1:] + plot_bins_left[:-1])
+    plot_centers_right = 0.5*(plot_bins_right[1:] + plot_bins_right[:-1])
     
 
-    # Null Hypothesis: The data comes from a single bin with mean B, and the Gaussian error on that mean is B_error
-    total_B = sum(B_function)
-    total_Bs = np.array([sum(y[i]) for i in range(n)])
-    total_Bs = np.where(total_Bs < 0, 0, total_Bs)
-    total_B_error = np.std(total_Bs)
-
-    # Alternative hypothesis: The data comes from a single bin with mean S+B, and the Gaussian error on that mean is B_error
-    num_total_in_SR = len(masses[(masses >= SR_left) & (masses <= SR_right)])
-    total_S = num_total_in_SR - total_B
-    total_S_error = np.sqrt(total_B_error**2)
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
 
 
-    if total_S < 0 or total_B < 0:
-        q0 = 0
-        return total_S, total_B, q0
+    # get left SB data
+    loc_bkg_left = data[data < SR_left]
+    y_vals_left, _ = np.histogram(loc_bkg_left, bins = plot_bins_left, density = False)
 
-    # # Calculate Test Statistic
-    # n = num_total_in_SR
-    # c = total_B
-    # sigma = total_B_error
+    # get right SB data
+    loc_bkg_right = data[data > SR_right]
+    y_vals_right, _ = np.histogram(loc_bkg_right, bins = plot_bins_right, density = False)
 
-    # sqrt_factor = np.sqrt(c**2 - 2*c*sigma**2 + sigma**4 + 4*n*sigma**2)
-    # term1 = n + 0.5*(-c + sigma**2 - sqrt_factor)
-    # term2 = -(-c + 0.5*(c - sigma**2 + sqrt_factor))**2 / (2*(sigma**2 ))
-    # term3 = -n*np.log(n)
-    # term4 = n * np.log(0.5 * (c - sigma**2 + sqrt_factor))
-    # q0 = -2 * (term1 + term2 + term3 + term4)
+    # Log poisson likelihood for the SB bins
+    log_likelihood = 0
+    fit_vals_left = parametric_fit(plot_centers_left, *theta)
+    fit_vals_right = parametric_fit(plot_centers_right, *theta)
+    for i in range(len(y_vals_left)):
+        log_likelihood += stats.poisson.logpmf(y_vals_left[i], fit_vals_left[i])
+    for j in range(len(y_vals_right)):
+        log_likelihood += stats.poisson.logpmf(y_vals_right[j], fit_vals_right[j])
 
-    # # print(f"c = {c}, sigma = {sigma}, n = {n}, sqrt_factor = {sqrt_factor}, log arg = {0.5*(c - sigma**2 + sqrt_factor)}")
-
-
-    # return total_S, total_B, q0 
-
-
-    ########## Likelihoods ##########
-    def likelihood_function(b, s, N):
-        return -2 * (stats.poisson.logpmf(N, b + s) + stats.norm.logpdf(b, total_B, total_B_error))
+    return -2 * log_likelihood
+    
+def null_hypothesis(data, SR_left, SR_right, SB_left, SB_right, *theta):
+    return likelihood(data, 0, SR_left, SR_right, SB_left, SB_right, *theta)
 
 
-    # Null hypothesis: s = 0 with PROFILED b. We need to minimize the likelihood to get the best fit b given the total_B and total_B_error
-    def null_likelihood_function(bprime):
-        return likelihood_function(bprime, 0, num_total_in_SR)
 
-    minimization = minimize(null_likelihood_function, total_B + total_B_error**2, bounds = [(0, None)])
-    post_fit_B = minimization.x[0]
-    log_B = likelihood_function(post_fit_B, 0, num_total_in_SR)
-    if verbose:
-        print("pre_fit_B", total_B, " +- ", total_B_error   ,"post-fit B:", post_fit_B)
+def calculate_test_statistic(data, SR_left, SR_right, SB_left, SB_right , degree = 5, starting_guess = None, verbose_plot = False, return_popt = False):
 
-    # Alternative hypothesis: s = total_S. No need to profile b, since the best fit will just be total_B, and the best fit for s is N - B
-    log_S_plus_B = likelihood_function(total_B, total_S, num_total_in_SR)
+    # We want to determine the profiled log likelihood ratio: -2 * [L(s, theta_hat_hat) - L(s_hat, theta_hat)]
+    # for s = 0
+
+    # Set up 
+    plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right)
+    bin_width = plot_bins_SR[1] - plot_bins_SR[0]
+    if starting_guess is None:
+        average_bin_count = len(data) / len(plot_centers_all)
+        starting_guess = [average_bin_count, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+
+
+
+    # Fit the s = 0 hypothesis
+    lambda_null = lambda theta: null_hypothesis(data, SR_left, SR_right, SB_left, SB_right, *theta)
+    fit = minimize(lambda_null , x0 = starting_guess, method = 'Nelder-Mead', options = {'maxiter': 15000, "disp": verbose_plot})
+    theta_hat_hat = fit.x
+    null_fit_likelihood = null_hypothesis(data, SR_left, SR_right, SB_left, SB_right, *theta_hat_hat)
+
+
+        # Fit the s = float hypothesis
+    lambda_cheat = lambda theta: cheat_likelihood(data, SR_left, SR_right, SB_left, SB_right, *theta)
+    fit = minimize(lambda_cheat , x0 = theta_hat_hat, method = 'Nelder-Mead', options = {'maxiter': 15000, "disp": verbose_plot})
+    theta_hat = fit.x
+    integrated_background = integral(SR_left, SR_right, bin_width, *theta_hat)
+    num_SR = len(data[np.logical_and(data > SR_left, data < SR_right)])
+    integrated_signal = num_SR - integrated_background
+    best_fit_likelihood = likelihood(data, integrated_signal, SR_left, SR_right, SB_left, SB_right, *theta_hat)
+
 
     # Calculate the test statistic
-    q_0 = log_B - log_S_plus_B
-    total_S = num_total_in_SR - post_fit_B
-    return total_S, total_B, q_0
-     
+    test_statistic = (null_fit_likelihood - best_fit_likelihood)
+    if integrated_signal < 0:
+        test_statistic = 0
+    if test_statistic < 0:
+        test_statistic = 0
+
+    if verbose_plot:
+        print('Best fit:', best_fit_likelihood)
+        print('Null fit:', null_fit_likelihood)
+        print('Test statistic:', null_fit_likelihood - best_fit_likelihood)
+        print('Integrated signal:', integrated_signal)
+        print('Integrated background:', integrated_background)
 
 
+    if verbose_plot:
+        plt.hist(data, bins = plot_bins, histtype = 'step', color = 'black', label = 'Data')
+        plt.plot(plot_centers, parametric_fit(plot_centers, *theta_hat), label = 'Fit')
+        plt.plot(plot_centers, parametric_fit(plot_centers, *theta_hat_hat), label = 'Null')
+        plt.legend()
+
+
+    if return_popt:
+        return integrated_signal, integrated_background, test_statistic, theta_hat
+
+    return integrated_signal, integrated_background, test_statistic
 
 
     
