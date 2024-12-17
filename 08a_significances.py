@@ -230,8 +230,6 @@ def plot_upsilon_resonances(ax):
 
 
 # In[10]:
-
-
 def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_cutoffs_by_fold, mass_scalar, fit_type, title, SB_left, SR_left, SR_right, SB_right, n_folds= 5, take_score_avg=True,):
     
 
@@ -258,25 +256,56 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
     # change the bin width with `num_bins_SR`
     plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR = num_bins_SR)
 
+    # Get a list of all possible cuts for the feature
+
+
+    all_data = np.vstack([data_dict_by_fold[i] for i in range(n_folds)])
+    all_scores = np.vstack([scores_dict_by_fold[i].reshape(-1,1) for i in range(n_folds)]) 
+    all_masses = mass_scalar.inverse_transform(all_data[:,-1].reshape(-1,1))
+    in_SR = (all_masses >= SR_left ) & (all_masses <= SR_right)
+    in_SBL = (all_masses < SR_left )
+    in_SBH = (all_masses > SR_right )
+
+    mass_SBL = all_masses[in_SBL]
+    mass_SR = all_masses[in_SR]
+    mass_SBH = all_masses[in_SBH]
+
+    feature_SBL = all_scores[in_SBL]
+    feature_SR = all_scores[in_SR]
+    feature_SBH = all_scores[in_SBH]
+
+    feature_cut_points = np.linspace(np.min(all_scores), np.max(all_scores), 10000)
+    
+
+        # For each cut, calculate the number of signal and background events in the SR
+    num_in_SBL = []
+    num_in_SR = []
+    num_in_SBH = []
+    FPR = []
+    for cut in feature_cut_points:
+        num_in_SBL.append(np.sum(feature_SBL >= cut)/len(feature_SBL))
+        num_in_SR.append(np.sum(feature_SR >= cut)/len(feature_SR))
+        num_in_SBH.append(np.sum(feature_SBH >= cut)/len(feature_SBH))
+
+        FPR.append((np.sum(feature_SBH >= cut)+np.sum(feature_SBL >= cut))/(len(feature_SBH)+len(feature_SBL)))
+
 
 
 
     fig, ax = newplot("full", width = 12, height = 9, use_tex = latex_flag)
     for t, threshold in enumerate(fpr_thresholds):
         
-        filtered_masses = []
 
-        # for each fold, select the events that meet the fpr threshold
-        for i_fold in range(n_folds):
-            loc_true_masses = mass_scalar.inverse_transform(np.array(data_dict_by_fold[i_fold][:,-1]).reshape(-1,1))
-            if take_score_avg:
-                loc_scores = np.mean(scores_dict_by_fold[i_fold], axis = 1)
-            else:
-                loc_scores = scores_dict_by_fold[i_fold]
-            loc_filtered_masses, loc_SBL_eff, loc_SBH_eff, loc_SR_eff = select_top_events_fold(loc_true_masses, loc_scores, score_cutoffs_by_fold[i_fold][threshold],plot_bins_left, plot_bins_right, plot_bins_SR)
-            filtered_masses.append(loc_filtered_masses)
-        # consolidate the fold information
-        filtered_masses = np.concatenate(filtered_masses)
+                    # Use interpolation to find the cut point that gives the desired FPR
+        best_feature_cut = feature_cut_points[np.argmin(np.abs(np.array(FPR)-threshold))]
+
+
+        mass_SBL_cut = mass_SBL[feature_SBL >= best_feature_cut]
+        mass_SR_cut = mass_SR[feature_SR >= best_feature_cut]
+        mass_SBH_cut = mass_SBH[feature_SBH >= best_feature_cut]
+
+        # Concatenate to get the full mass spectrum
+        filtered_masses = np.concatenate((mass_SBL_cut, mass_SR_cut, mass_SBH_cut))
 
         # get the fit function to SB background
         popt, pcov, chi2, y_vals, n_dof = curve_fit_m_inv(filtered_masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
@@ -365,6 +394,8 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
 
     # plt.title(title, fontsize = 24)
     return save_data
+    
+
     
 
 
@@ -626,7 +657,7 @@ CALCULATE THE ROC CURVES
 
 # determine fpr thresholds as before
 # yes this is repeated code
-fpr_thresholds_finegrained = np.logspace(0, -4, 25)
+fpr_thresholds_finegrained = np.logspace(0, -3, 25)
 #fpr_thresholds = np.linspace(1, 0 , 50)
 
 plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR = num_bins_SR)
@@ -652,7 +683,7 @@ CALCULATE THE ROC CURVES
 
 # determine fpr thresholds as before
 # yes this is repeated code
-fpr_thresholds_finegrained = np.logspace(0, -4, 25)
+fpr_thresholds_finegrained = np.logspace(0, -3, 25)
 #fpr_thresholds = np.linspace(1, 0 , 50)
 
 plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR = num_bins_SR)
@@ -828,7 +859,7 @@ def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_type, title, SB
 
 
     num_experiments = num_pseudoexperiments
-    fpr_thresholds = np.logspace(-4, 0, 25)[::-1]
+    fpr_thresholds = np.logspace(-3, 0, 25)[::-1]
     S_yield = np.zeros((len(fpr_thresholds), num_experiments))
     B_yield = np.zeros((len(fpr_thresholds), num_experiments))
     background_errors = np.zeros((len(fpr_thresholds), num_experiments))
