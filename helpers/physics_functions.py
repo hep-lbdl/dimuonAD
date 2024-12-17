@@ -34,7 +34,7 @@ def assemble_m_inv(a_M, a_pt, a_eta, a_phi, b_M, b_pt, b_eta, b_phi):
     mother_M = np.sqrt(M_sq_cands)
     mother_pt = np.sqrt(mother_px**2 + mother_py**2)
     mother_eta = np.arcsinh(mother_pz/mother_pt)
-    mother_phi = np.arctan(mother_py/mother_px)
+    mother_phi = np.arctan2(mother_py, mother_px)
 
     good_event_indices = (M_sq_cands >= 0) & (mother_pt > 0)
     
