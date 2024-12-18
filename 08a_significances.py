@@ -888,15 +888,16 @@ def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_type, title, SB
 
         # Split into SBL, SR, and SBH
         # print(masses.shape, feature_of_interest.shape)
+
+        if flip:
+            feature_of_interest = -feature_of_interest
+
         feature_SBL = feature_of_interest[masses < SR_left]
         feature_SR = feature_of_interest[(masses >= SR_left) & (masses <= SR_right)]
         feature_SBH = feature_of_interest[masses > SR_right]
 
 
-        if flip:
-            feature_SBL = -feature_SBL
-            feature_SR = -feature_SR
-            feature_SBH = -feature_SBH
+ 
 
         # Get a list of all possible cuts for the feature
         mass_SBL = masses[masses < SR_left]
