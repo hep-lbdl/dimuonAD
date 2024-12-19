@@ -220,24 +220,35 @@ def select_top_events_fold(true_masses, scores, score_cutoff, plot_bins_left, pl
     return true_masses[pass_scores], SBL_counts_passed/SBL_counts_all, SBH_counts_passed/SBH_counts_all, SR_counts_passed/SR_counts_all
 
    
-def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB, SBL_rescale=None, SBH_rescale=None):
+def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB, SBL_rescale=None, SBH_rescale=None, weights = None):
     
 
-
+    if weights is None:
+        weights = np.ones_like(masses)
         
     # get left SB data
     loc_bkg_left = masses[masses < SR_left]
-    y_vals_left, _ = np.histogram(loc_bkg_left, bins = plot_bins_left, density = False)
+    weights_left = weights[masses < SR_left]
+    y_vals_left, _bins = np.histogram(loc_bkg_left, bins = plot_bins_left, density = False, weights = weights_left)
+
+    digits = np.digitize(loc_bkg_left, _bins)
+    left_err = np.asarray([np.linalg.norm(weights_left[digits==i]) for i in range(1, len(_bins))])
 
     # get right SB data
     loc_bkg_right = masses[masses > SR_right]
-    y_vals_right, _ = np.histogram(loc_bkg_right, bins = plot_bins_right, density = False)
+    weights_right = weights[masses > SR_right]
+    y_vals_right, _bins = np.histogram(loc_bkg_right, bins = plot_bins_right, density = False, weights = weights_right)
+
+    digits = np.digitize(loc_bkg_right, _bins)
+    right_err = np.asarray([np.linalg.norm(weights_right[digits==i]) for i in range(1, len(_bins))])
+
 
     # concatenate the SB data
     if SBL_rescale is not None:
         y_vals = np.concatenate((SBL_rescale*y_vals_left, SBH_rescale*y_vals_right))
     else: 
         y_vals = np.concatenate((y_vals_left, y_vals_right))
+        errs = np.concatenate((left_err, right_err))
 
     average_bin_count = np.mean(y_vals)
 
@@ -263,7 +274,7 @@ def curve_fit_m_inv(masses, fit_type, SR_left, SR_right, plot_bins_left, plot_bi
         n_dof_fit = 3
 
     # fit the SB data
-    y_err = np.sqrt(y_vals + 1)
+    y_err = np.sqrt(errs**2 + 1)
     popt, pcov = curve_fit(fit_function, plot_centers_SB, y_vals, p0, sigma = y_err, maxfev=10000)
 
     # get chi2 in the SB
