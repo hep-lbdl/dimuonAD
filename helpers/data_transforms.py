@@ -4,7 +4,6 @@ epsilon = 1e-4
 
 def logit_transform(x, all_min, all_max, cushion ):
 
-    epsilon = 1e-6
     
     x_norm = (x-all_min)/(all_max-all_min)
     x_norm = (1.0 - 2.0*cushion)*x_norm + cushion
