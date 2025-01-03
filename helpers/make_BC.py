@@ -49,7 +49,6 @@ def train_NN(X_train, Y_train, w_train, X_val, Y_val, w_val, seed, layers, hyper
     batch_size = hyperparameters_dict["batch_size"]
     lr = hyperparameters_dict["lr"]
     
-    
     torch.manual_seed(seed)
     np.random.seed(seed)
     
