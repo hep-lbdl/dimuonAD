@@ -16,11 +16,9 @@ import os
 from matplotlib.backends.backend_pdf import PdfPages
 import pickle
 
-from helpers.data_transforms import clean_data, bootstrap_array
-from helpers.BDT import *
-from helpers.physics_functions import *
-from helpers.plotting import hist_all_features_array
-from helpers.evaluation import assemble_banded_datasets, convert_to_latent_space_true_cathode, get_median_percentiles
+from helpers.data_transforms import clean_data, bootstrap_array, assemble_banded_datasets
+from helpers.BDT import run_BDT_bump_hunt
+from helpers.evaluation import convert_to_latent_space_true_cathode, get_median_percentiles
 
 parser = argparse.ArgumentParser()
 
@@ -32,7 +30,7 @@ parser.add_argument("-bf", "--bootstrap_flow", type=int, default=0)
 parser.add_argument("-bd", "--bootstrap_data", type=int)
 
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
-parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+parser.add_argument("-fit", "--bkg_fit_degree", default='quintic')
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 
 # flow-specific arguments
@@ -101,7 +99,7 @@ else:
 seeds_list = [int(x) for x in args.seeds.split(",")]
 train_samples_dict = {'SR_samples_ROC':[], 'SBL_samples_ROC':[], 'SBH_samples_ROC':[], 'SR_samples_validation':[], 'SR_samples':[]}
 for seed in seeds_list:
-    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_type}_{args.num_bins_SR}"
+    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_degree}_{args.num_bins_SR}"
     with open(path_to_samples, "rb") as infile: 
         loc_train_samples_dict = pickle.load(infile)
         for key in train_samples_dict.keys():
@@ -143,7 +141,6 @@ elif args.run_null:
     
 
 
-
 with open(f"{flow_training_dir}/seed1/configs.txt", "rb") as infile: 
     configs = infile.readlines()[0].decode("utf-8")
     feature_set = [x.strip() for x in configs.split("'")][1::2]
@@ -179,31 +176,8 @@ SR_min_rescaled = np.min(banded_test_data["SR"][:,-1])
 SR_max_rescaled = np.max(banded_test_data["SR"][:,-1])
 
 # BDT HYPERPARAMETERS 
-
-"""
-bdt_hyperparams_dict = {
-    "n_estimators": 300, # number of boosting stages
-    "max_depth":5, # max depth of individual regression estimators; related to complexity
-    "learning_rate":0.1,  # stop training BDT is validation loss doesn't improve after this many rounds
-    "subsample":0.7,   # fraction of samples to be used for fitting the individual base learners
-    "early_stopping_rounds":10,
-    "n_ensemble": num_to_ensemble
-    
-}
-"""
-
-
-bdt_hyperparams_dict = {
-    "n_estimators": 300, # number of boosting stages
-    "max_depth":3, # max depth of individual regression estimators; related to complexity
-    "learning_rate":0.1,  # stop training BDT is validation loss doesn't improve after this many rounds
-    "subsample":0.7,   # fraction of samples to be used for fitting the individual base learners
-    "early_stopping_rounds":10,
-    "n_ensemble": args.num_to_ensemble
-    
-}
-
-
+bdt_hyperparams_dict = workflow["bdt_hyperparameters"]
+bdt_hyperparams_dict["n_ensemble"] = args.num_to_ensemble
 
 all_test_data_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
 all_scores_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
@@ -286,12 +260,12 @@ for pseudo_e in range(args.start, args.stop):
 print("Done training BDTs!")
 
 
-with open(f"{pickle_save_dir}/all_test_data_splits_{args.bkg_fit_type}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_test_data_splits_{args.bkg_fit_degree}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_test_data_splits, ofile)
-with open(f"{pickle_save_dir}/all_alt_data_splits_{args.bkg_fit_type}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_alt_data_splits_{args.bkg_fit_degree}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_alt_data_splits, ofile)
-with open(f"{pickle_save_dir}/all_scores_splits_{args.bkg_fit_type}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_scores_splits_{args.bkg_fit_degree}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_scores_splits, ofile)
-with open(f"{pickle_save_dir}/all_alt_scores_splits_{args.bkg_fit_type}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_alt_scores_splits_{args.bkg_fit_degree}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_alt_scores_splits, ofile)
       

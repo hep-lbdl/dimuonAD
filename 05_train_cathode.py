@@ -11,10 +11,11 @@ from numba import cuda
 from helpers.density_estimator import DensityEstimator
 from helpers.ANODE_training_utils import train_ANODE, plot_ANODE_losses
 from helpers.data_transforms import clean_data
-from helpers.physics_functions import get_bins, get_bins_for_scan, curve_fit_m_inv, bkg_fit_cubic, bkg_fit_quintic, bkg_fit_septic
+from helpers.physics_functions import get_bins, get_bins_for_scan
+from helpers.stats_functions import curve_fit_m_inv, parametric_fit
+
 from helpers.plotting import *
-from helpers.evaluation import *
-from helpers.flow_sampling import *
+from helpers.flow_sampling import get_mass_samples, get_flow_samples
 
 parser = argparse.ArgumentParser()
 
@@ -25,7 +26,7 @@ parser.add_argument("-workflow", "--workflow_path", default="workflow", help='ID
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
 parser.add_argument("-bootstrap", "--bootstrap", default="bootstrap0")
 
-parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+parser.add_argument("-fit", "--bkg_fit_degree", default=5, type=int)
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 parser.add_argument('-premade_bins', '--premade_bins', action="store_true", default=False, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
 parser.add_argument('-win', '--window_index', type=int, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
@@ -40,19 +41,13 @@ parser.add_argument('-seed', '--seed', default=1)
 
 # training
 parser.add_argument("-c", "--configs", default="CATHODE_8")
-parser.add_argument('--epochs', default=400, type=int)
-parser.add_argument('--batch_size', default=256, type=int)
+parser.add_argument("-e", "--epochs", default=400, type=int)
+parser.add_argument("-bs", "--batch_size", default=256, type=int)
 parser.add_argument('--verbose', default=False)
 parser.add_argument('--no_logit', action="store_true", default=False,help='Turns off the logit transform.')
 parser.add_argument('-no_train', '--no_train', action="store_true", default=False)
 
 args = parser.parse_args()
-
-
-bkg_fit_type = args.bkg_fit_type
-if bkg_fit_type == "cubic": bkg_fit_function = bkg_fit_cubic
-elif bkg_fit_type == "quintic": bkg_fit_function = bkg_fit_quintic
-elif bkg_fit_type == "septic": bkg_fit_function = bkg_fit_septic
 
 use_inner_bands = args.use_inner_bands
 if use_inner_bands:bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
@@ -228,21 +223,23 @@ else:
     plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, binning="linear", num_bins_SR=args.num_bins_SR)
     
 x = np.linspace(SB_left, SB_right, 100) # plot curve fit
-popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, bkg_fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
+
+
+popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, args.bkg_fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
 
 plt.figure(figsize = (7,5))
-plt.plot(x, bkg_fit_function(x, *popt_0), lw = 3, linestyle = "dashed", label = "SB fit")
+plt.plot(x, parametric_fit(x, *popt_0), lw = 3, linestyle = "dashed", label = "SB fit")
 plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "SB data") 
 
 # estimate number of samples
-n_SR_samples = int(np.sum(bkg_fit_function(plot_centers_SR, *popt_0)))
+n_SR_samples = int(np.sum(parametric_fit(plot_centers_SR, *popt_0)))
 # make samples
-mass_samples = get_mass_samples(SR_left, SR_right, bkg_fit_type, n_SR_samples, popt_0)
+mass_samples = get_mass_samples(SR_left, SR_right, args.bkg_fit_degree, n_SR_samples, popt_0)
 
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
 
-plt.savefig(f"{flow_training_dir}/bkg_fit_{bkg_fit_type}_{args.num_bins_SR}")
+plt.savefig(f"{flow_training_dir}/bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}")
          
 
 data_dict["SR_samples"] =  get_flow_samples(eval_model, mass_samples) 
@@ -252,7 +249,7 @@ data_dict["SR_samples_validation"] = get_flow_samples(eval_model, mass_samples)
 data_dict["SR_samples_ROC"] =  get_flow_samples(eval_model, mass_samples) 
 
 
-with open(f"{flow_training_dir}/flow_samples_{bkg_fit_type}_{args.num_bins_SR}", "wb") as ofile:
+with open(f"{flow_training_dir}/flow_samples_{args.bkg_fit_degree}_{args.num_bins_SR}", "wb") as ofile:
     pickle.dump(data_dict, ofile)
     
     

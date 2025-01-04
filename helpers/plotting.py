@@ -206,11 +206,6 @@ def hist_all_features_array(samples, labels, feature_set, plot_bound=3, yscale_l
 
 
 
-
-
-
-
-
 # ########## Copied From https://github.com/rikab/rikabplotlib/blob/main/src/rikabplotlib/plot_utils.py ##########
 
 # Constants
@@ -403,8 +398,6 @@ def hist_with_outline(ax, points, bins, range, weights = None, color = "purple",
 
     #     edgecolor = mpl.colors.colorConverter.to_rgba(color, alpha=alpha_2)
     #     ax.hist(points, bins = bins, range = range, weights = weights * -1, color = color, alpha = alpha_1, lw = lw*2, label = label, edgecolor = edgecolor, **kwargs)
-
-
 
 
 

@@ -4,7 +4,7 @@ import argparse
 
 import os
 
-from helpers.evaluation import *
+from helpers.evaluation import get_kl_dist
 from helpers.data_transforms import clean_data
 
 
@@ -16,7 +16,7 @@ parser.add_argument("-workflow", "--workflow_path", default="workflow", help='ID
 # data-specific arguments
 parser.add_argument("-bootstrap", "--bootstrap")
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
-parser.add_argument("-fit", "--bkg_fit_type", default='quintic')
+parser.add_argument("-fit", "--bkg_fit_degree", default=5, type=int)
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 parser.add_argument('--use_inner_bands', action="store_true", default=False)
 
@@ -50,7 +50,7 @@ flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + w
 seeds_list = [int(x) for x in args.seeds.split(",")]
 
 for seed in seeds_list:
-    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_type}_{args.num_bins_SR}"
+    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_degree}_{args.num_bins_SR}"
     with open(path_to_samples, "rb") as infile: 
         loc_data_dict = pickle.load(infile)
         for key in data_dict.keys():

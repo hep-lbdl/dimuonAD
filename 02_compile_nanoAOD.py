@@ -171,7 +171,7 @@ for i in range(num_files):
         for jet_var in hardest_jet_vars_to_add.keys():          
             all_data[f"{jet_var}"].append(ak.firsts(loc_jet_feature[hardest_jet_vars_to_add[jet_var]][event_filter])[oppsign_filter].to_numpy(allow_missing = True))
             if args.run_samesign:
-                all_data[f"{jet_var}_samesign"].append(ak.firsts(loc_jet_feature[hardest_jet_vars_to_add[jet_var]][event_filter][event_filter])[samesign_filter].to_numpy(allow_missing = True))
+                all_data[f"{jet_var}_samesign"].append(ak.firsts(loc_jet_feature[hardest_jet_vars_to_add[jet_var]][event_filter])[samesign_filter].to_numpy(allow_missing = True))
 
     # single muon vars        
     for single_mu_var in single_mu_vars_to_add.keys(): 
