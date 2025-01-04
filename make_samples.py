@@ -9,30 +9,47 @@ import yaml
 from numba import cuda
 
 from helpers.density_estimator import DensityEstimator
-from helpers.ANODE_training_utils import train_ANODE, plot_ANODE_losses
 from helpers.data_transforms import clean_data
-from helpers.physics_functions import get_bins, get_bins_for_scan, curve_fit_m_inv, bkg_fit_cubic, bkg_fit_quintic, bkg_fit_septic
-from helpers.plotting import *
-from helpers.evaluation import *
-from helpers.flow_sampling import *
+from helpers.physics_functions import get_bins, get_bins_for_scan
+from helpers.stats_functions import curve_fit_m_inv
+#from helpers.plotting import *
+from helpers.flow_sampling import get_mass_samples, get_flow_samples
+#from helpers.flow_sampling import *
 
 parser = argparse.ArgumentParser()
 
+# project-specific arguments
+parser.add_argument("-workflow", "--workflow_path", default="workflow", help='ID associated with the directory')
+
+# data-specific arguments
+parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
+parser.add_argument("-bootstrap", "--bootstrap", default="bootstrap0")
+
+parser.add_argument("-fit", "--bkg_fit_degree", default=5, type=int)
+parser.add_argument("-n_bins", "--num_bins_SR", default=12, type=int)
+
+parser.add_argument('--use_inner_bands', action="store_true", default=False)
+#parser.add_argument('--use_extra_data', action="store_true", default=False)
+
+# flow-specific arguments
+parser.add_argument("-fid", "--feature_id")
+parser.add_argument("-feats", "--feature_list")
+parser.add_argument('-seeds', '--seeds', default="6,7,8,9,10")
+
+# training
+parser.add_argument("-c", "--configs", default="CATHODE_8")
+
+# boostrapping details
 parser.add_argument("-start", "--start", type=int)
 parser.add_argument("-stop", "--stop", type=int)
-parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
+parser.add_argument("-n_events", "--num_events", type=int, help='12332 for OS, 7168 for SS')
 
 args = parser.parse_args()
+
+
 train_samesign = args.train_samesign
 bootstrap_start, bootstrap_stop = args.start, args.stop
 
-
-bkg_fit_type = "quintic"
-num_bins_SR = 12
-
-if bkg_fit_type == "cubic": bkg_fit_function = bkg_fit_cubic
-elif bkg_fit_type == "quintic": bkg_fit_function = bkg_fit_quintic
-elif bkg_fit_type == "septic": bkg_fit_function = bkg_fit_septic
 
 use_inner_bands = False
 if use_inner_bands: bands = ["SBL", "IBL", "SR", "IBH", "SBH"]
@@ -42,22 +59,19 @@ else: bands = ["SBL", "SR", "SBH"]
 if train_samesign: samesign_id = "SS"
 else: samesign_id = "OS"
 
-feature_id = "mix_2"
-configs ="CATHODE_8"
-feature_list = "dimu_pt,mu0_ip3d,mu1_ip3d,dimu_mass"
     
-feature_set = [f for f in feature_list.split(",")]
+feature_set = [f for f in args.feature_list.split(",")]
 print(f"Using feature set {feature_set}")
 num_features = len(feature_set) - 1 # context doesn't count
 
 
 import yaml
-with open("workflow.yaml", "r") as file:
+with open(f"{args.workflow_path}.yaml", "r") as file:
     workflow = yaml.safe_load(file)
 
 working_dir = workflow["file_paths"]["working_dir"]
 processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
-path_to_config_file = f"{working_dir}/configs/{configs}.yml"
+path_to_config_file = f"{working_dir}/configs/{args.configs}.yml"
 
 
 # computing
@@ -94,27 +108,35 @@ masses_to_fit = np.hstack((data_dict["SBL"][:,-1], data_dict["SBH"][:,-1]))
 print("Defining bins on the fly...")
 SB_left, SR_left = np.min(data_dict["SBL"][:,-1].reshape(-1)),  np.max(data_dict["SBL"][:,-1].reshape(-1))
 SR_right, SB_right = np.min(data_dict["SBH"][:,-1].reshape(-1)),  np.max(data_dict["SBH"][:,-1].reshape(-1))
-plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, binning="linear", num_bins_SR=num_bins_SR)
+plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, binning="linear", num_bins_SR=args.num_bins_SR)
 x = np.linspace(SB_left, SB_right, 100) # plot curve fit
 
-popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, bkg_fit_type, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
+popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, args.bkg_fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
 
 
-if train_samesign: num_samples = [1433,1433,1434,1434,1434]
-else: num_samples = [2466,2466,2466,2467,2467]
 
 
-flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/bootstrap0_{samesign_id}/{feature_id}/{configs}/"
+
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/bootstrap0_{samesign_id}/{args.feature_id}/{args.configs}/"
 
 
 
 sampled_features = {i:[] for i in range(bootstrap_start, bootstrap_stop)}
 
-for i in [6,7,8,9,10]: # flow seeds to read in
+seeds_list = [int(x) for x in args.seeds.split(",")]
+
+# determine how many events to draw from each network
+min_num_events = int(args.num_events/len(seeds_list))
+num_samples = [min_num_events for i in range(len(seeds_list))]
+remaining_samples = args.num_events % len(seeds_list)
+for i in range(remaining_samples):
+    num_samples[i] += 1
+
+for i, s in enumerate(seeds_list): # flow seeds to read in
 
 
     # load in the best flow model
-    loc_flow_training_dir = f"{flow_training_dir}/seed{i}"
+    loc_flow_training_dir = f"{flow_training_dir}/seed{s}"
     train_losses = np.load(os.path.join(loc_flow_training_dir, f"flow_train_losses.npy"))
     val_losses = np.load(os.path.join(loc_flow_training_dir, f"flow_val_losses.npy"))
     best_epoch = np.nanargmin(val_losses) - 1
@@ -128,12 +150,11 @@ for i in [6,7,8,9,10]: # flow seeds to read in
         torch.manual_seed(bs)
         np.random.seed(bs)
     
-        mass_samples = get_mass_samples(SB_left, SB_right, bkg_fit_type, num_samples[i-6], popt_0)
+        mass_samples = get_mass_samples(SB_left, SB_right, args.bkg_fit_degree, num_samples[i], popt_0)
         feature_samples = get_flow_samples(eval_model, mass_samples) 
         sampled_features[bs].append(feature_samples)
 
-
-
+        
 for bs in range(bootstrap_start, bootstrap_stop):
     sampled_features[bs] = np.vstack(sampled_features[bs])
   
@@ -155,7 +176,7 @@ for bs in range(bootstrap_start, bootstrap_stop):
 
 
     with open(f"/global/cfs/cdirs/m3246/rmastand/dimuonAD/projects/upsilon_iso_12_03/processed_data/bkg_samples/bootstrap{bs}_{samesign_id}_test_band_data", "wb") as ofile:
-        pickle.dump(flow_dict, ofile)
+        #pickle.dump(flow_dict, ofile)
         
         
     
