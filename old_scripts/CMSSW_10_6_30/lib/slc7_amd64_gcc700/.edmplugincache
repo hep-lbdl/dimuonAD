@@ -1,0 +1,6 @@
+pluginPhysicsToolsNanoAODJMARPlugins.so GenJetConstituentTableProducer CMS%EDM%Framework%Module
+pluginPhysicsToolsNanoAODJMARPlugins.so GenJetConstituentTableProducer CMS%EDM%Framework%ParameterSet%Description
+pluginPhysicsToolsNanoAODJMARPlugins.so PatJetConstituentTableProducer CMS%EDM%Framework%Module
+pluginPhysicsToolsNanoAODJMARPlugins.so PatJetConstituentTableProducer CMS%EDM%Framework%ParameterSet%Description
+pluginTestMiniAnalyzerAuto.so MiniAnalyzer CMS%EDM%Framework%Module
+pluginTestMiniAnalyzerAuto.so MiniAnalyzer CMS%EDM%Framework%ParameterSet%Description

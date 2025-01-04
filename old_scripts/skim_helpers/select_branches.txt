@@ -1,0 +1,15 @@
+drop * # start with all
+keep Muon_pt
+keep Muon_eta
+keep Muon_phi
+keep Muon_charge
+keep Muon_pfRelIso03_all
+keep Muon_pfRelIso04_all
+keep Jet_pt
+keep Jet_eta
+keep Jet_phi
+keep Jet_mass
+keep Jet_nConstituents
+keep Jet_btagDeepB
+
+

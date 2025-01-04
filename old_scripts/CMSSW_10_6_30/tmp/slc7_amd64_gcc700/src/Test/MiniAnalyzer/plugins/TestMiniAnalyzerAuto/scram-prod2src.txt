@@ -1,0 +1,1 @@
+TestMiniAnalyzerAuto Test/MiniAnalyzer/plugins/MiniAnalyzer.cc
