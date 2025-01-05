@@ -169,7 +169,7 @@ def calculate_test_statistic(data, SR_left, SR_right, SB_left, SB_right , degree
     bin_width = plot_bins_SR[1] - plot_bins_SR[0]
     if starting_guess is None:
         average_bin_count = len(data) / len(plot_centers_all)
-        starting_guess = [average_bin_count, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        starting_guess = [average_bin_count, 0, 0, 0, 0, 0, 0, 0, 0, 0][:degree + 1]
 
 
     # Fit the s = 0 hypothesis
