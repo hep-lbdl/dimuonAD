@@ -46,7 +46,7 @@ Once some version of notebook `04` has been run, use the script `05_train_cathod
 
 Helpful flags:
 - `train_samesign`: if you want to train on samesign muon pairs, instead of opposite-sign pairs
-- `bkg_fit_degree`: pick an odd numberß
+- `bkg_fit_degree`: pick an odd number
 - `num_bins_SR`: `int` for the number of bin *boundaries* in the SR
 
 You can specify `epochs` and `batch_size` as an argument to the script. For larger flow architecture changes, create a new config file in the `configs/<your_config.yml>` folder and pass the file with `-c your_config.yml`.
