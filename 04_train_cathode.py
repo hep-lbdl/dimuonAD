@@ -249,7 +249,7 @@ data_dict["SR_samples_validation"] = get_flow_samples(eval_model, mass_samples)
 data_dict["SR_samples_ROC"] =  get_flow_samples(eval_model, mass_samples) 
 
 
-with open(f"{flow_training_dir}/flow_samples_{args.bkg_fit_degree}_{args.num_bins_SR}", "wb") as ofile:
+with open(f"{flow_training_dir}/flow_samples_bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}", "wb") as ofile:
     pickle.dump(data_dict, ofile)
     
     

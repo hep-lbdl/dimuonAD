@@ -32,20 +32,17 @@ path_to_input = f"{path_to_data_dir}/precompiled_data/{args.data_id}/"
 path_to_output = f"{path_to_data_dir}/compiled_data/{args.project_id}"
 os.makedirs(path_to_output, exist_ok=True)
 
-num_files_dict = {
-    "skimmed_data_2016H_30555":28,
-    "SM_SIM":49,
-    "BSM_HAA":11,
-    "BSM_XYY":2,
+files_dict = {
+    "skimmed_data_2016H_30555":['127C2975-1B1C-A046-AABF-62B77E757A86', '183BFB78-7B5E-734F-BBF5-174A73020F89', '1BE226A3-7A8D-1B43-AADC-201B563F3319', '1DE780E2-BCC2-DC48-815D-9A97B2A4A2CD', '21DA4CE5-4E50-024F-9CE1-50C77254DD4E', '2C6A0345-8E2E-9B41-BB51-DB56DFDFB89A', '3676E287-A650-8F44-BBCB-3B8556966406', '411A019C-7058-FD42-AD50-DE74433E6859', '46A8960A-E58F-4648-9C12-2708FE7C12FB', '4F0B53A7-6440-924B-AF48-B5B61D3CE23F', '790F8A75-8256-3B46-8209-850DE0BE3C77', '7F53D1DE-439E-AD48-871E-D3458DABA798', '8A696857-C147-B04A-905A-F85FB76EDA23', '8B253755-51F2-CB49-A4B6-C79637CAE23F', '9528EA75-1C0B-9047-A9A3-6A47564F7A98', 'A6605227-0B58-864E-8422-B8990D18F622', 'B2DC29E0-8679-1D4F-A5AE-E7D0284A20D4', 'B450B2B3-BEF8-8C43-82BF-7AD0EF2EA7EA', 'B7AA7F04-5D5F-514A-83A6-9A275198852C', 'B93B57BF-4239-A049-9531-4C542C370185', 'C4558F81-9F2C-1349-B528-6B9DD6838D6D', 'C8CFC890-D4B8-8A4F-8699-C6ACCDF1620A', 'CAA285FF-7A12-F945-9183-DC7042178535', 'CD267D88-E57D-3B44-AC45-0712E2E12B87', 'E7C51551-7A75-5C41-B468-46FB922F36A9', 'EBC200F4-C06F-CE45-BAAA-7CAECDD3076F', 'EEB2FE3F-7CF3-BF4A-9F70-3F89FACE698E', 'F5E234F9-1E9C-0042-B395-AB6407E4A336'],
 }
-num_files = num_files_dict[args.data_id]
+num_files = len(files_dict[args.data_id])
 
  
-with open(f"{path_to_input}/all_mu_0", "rb") as input_file:
+with open(f"{path_to_input}/all_mu_{files_dict[args.data_id][0]}", "rb") as input_file:
     loc_mu_feature = pickle.load(input_file)
     muon_vars = list(loc_mu_feature.keys())
 
-with open(f"{path_to_input}/all_jet_0", "rb") as input_file:
+with open(f"{path_to_input}/all_jet_{files_dict[args.data_id][0]}", "rb") as input_file:
     loc_jet_feature = pickle.load(input_file)
     jet_vars = list(loc_jet_feature.keys())
     
@@ -116,6 +113,10 @@ for i in range(num_files):
         
     with open(f"{path_to_input}/all_jet_{i}", "rb") as input_file:
         loc_jet_feature = pickle.load(input_file)
+        
+    """
+    EVENT FILTER DEFINITION
+    """
     
     if args.run_jet:
         # 2 hard muons that pass tight ID and jet

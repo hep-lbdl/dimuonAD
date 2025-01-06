@@ -99,7 +99,7 @@ else:
 seeds_list = [int(x) for x in args.seeds.split(",")]
 train_samples_dict = {'SR_samples_ROC':[], 'SBL_samples_ROC':[], 'SBH_samples_ROC':[], 'SR_samples_validation':[], 'SR_samples':[]}
 for seed in seeds_list:
-    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_degree}_{args.num_bins_SR}"
+    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}"
     with open(path_to_samples, "rb") as infile: 
         loc_train_samples_dict = pickle.load(infile)
         for key in train_samples_dict.keys():
@@ -260,12 +260,12 @@ for pseudo_e in range(args.start, args.stop):
 print("Done training BDTs!")
 
 
-with open(f"{pickle_save_dir}/all_test_data_splits_{args.bkg_fit_degree}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_test_data_splits_bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_test_data_splits, ofile)
-with open(f"{pickle_save_dir}/all_alt_data_splits_{args.bkg_fit_degree}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_alt_data_splits_bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_alt_data_splits, ofile)
-with open(f"{pickle_save_dir}/all_scores_splits_{args.bkg_fit_degree}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_scores_splits_bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_scores_splits, ofile)
-with open(f"{pickle_save_dir}/all_alt_scores_splits_{args.bkg_fit_degree}_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
+with open(f"{pickle_save_dir}/all_alt_scores_splits_bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}_{args.start}_{args.stop}", "wb") as ofile:
     pickle.dump(all_alt_scores_splits, ofile)
       

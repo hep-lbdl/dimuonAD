@@ -114,7 +114,7 @@ def load_in_pseudoexperiments(file_string, num_pseudoexps):
 
     master_dict = {}
 
-    with open(f"{pickle_save_dir}/{file_string}_{fit_types[bkg_fit_degree]}_{num_bins_SR}_0_1", "rb") as ifile:
+    with open(f"{pickle_save_dir}/{file_string}_bkg_fit_{bkg_fit_degree}_num_bins_{num_bins_SR}_0_1", "rb") as ifile:
         loc_dict = pickle.load(ifile)
     master_dict = {**loc_dict}
     # load in the bootstraps

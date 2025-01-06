@@ -50,7 +50,7 @@ flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + w
 seeds_list = [int(x) for x in args.seeds.split(",")]
 
 for seed in seeds_list:
-    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_{args.bkg_fit_degree}_{args.num_bins_SR}"
+    path_to_samples = f"{flow_training_dir}/seed{seed}/flow_samples_bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}"
     with open(path_to_samples, "rb") as infile: 
         loc_data_dict = pickle.load(infile)
         for key in data_dict.keys():

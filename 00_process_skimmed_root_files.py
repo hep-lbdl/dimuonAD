@@ -39,11 +39,14 @@ for path in paths_to_root_file_list:
         list_of_root_files += root_file_list
         
 num_jets_to_save = 3
-        
+
+file_paths = []
         
 for i in range(args.start, args.stop):
     
-    loc_root_file_string = (path_to_root_input+list_of_root_files[i].strip().split("/")[-1])[:-5]+"_Skim.root"
+    loc_root_file_id = list_of_root_files[i].strip().split("/")[-1][:-5]
+    file_paths.append(loc_root_file_id)
+    loc_root_file_string = (path_to_root_input+loc_root_file_id)+"_Skim.root"
     print("Analyzing file", i, loc_root_file_string)
 
     loc_root_file = uproot.open(loc_root_file_string)
@@ -58,34 +61,37 @@ for i in range(args.start, args.stop):
                              "HLT_Mu8", "HLT_TkMu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ", "HLT_TkMu17_TrkIsoVVL_TkMu8_TrkIsoVVL", "HLT_TripleMu_12_10_5", 
                              "HLT_TripleMu_5_3_3_DZ_Mass3p8", "HLT_TripleMu_5_3_3", "HLT_TrkMu15_DoubleTrkMu5NoFiltersNoVtx", "HLT_TrkMu17_DoubleTrkMu8NoFiltersNoVtx"]
 
-    # only store the muons for now
     muon_vars = ["Muon_pt", "Muon_eta", "Muon_phi", "Muon_charge", "Muon_pfRelIso03_all", "Muon_pfRelIso04_all", "Muon_tightId", "Muon_jetIdx", "Muon_ip3d", "Muon_jetRelIso", "Muon_dxy", "Muon_dz"]
+    # store the triggers as extra muons vars
     muon_vars += triggers_HLT
-    electron_vars = ["Electron_pt", "Electron_eta", "Electron_phi", "Electron_charge"]
-    jet_vars = ["Jet_pt", "Jet_eta", "Jet_phi", "Jet_mass", "Jet_nConstituents", "Jet_btagCSVV2", "Jet_btagDeepB", "Jet_btagDeepFlavB", "MET_pt", "MET_sumEt", "PV_npvsGood", "Jet_nMuons"]
+    #electron_vars = ["Electron_pt", "Electron_eta", "Electron_phi", "Electron_charge"]
+    jet_vars = ["Jet_pt", "Jet_eta", "Jet_phi", "Jet_mass", "Jet_nConstituents", "Jet_btagCSVV2", "Jet_btagDeepB", "Jet_btagDeepFlavB", "MET_pt", "MET_sumEt", "PV_npvsGood", "Jet_nMuons", "Jet_qgl", "Jet_muEF", "Jet_chHEF", "Jet_chEmEF", "Jet_neEmEF", "Jet_neHEF"]
     
-    all_muon_data, all_electron_data = {}, {}
+
+    
+    all_muon_data = {}
+    #all_electron_data = {}
     all_jet_data = {}
     for mv in muon_vars:
         try:
             all_muon_data[mv] = events[mv].array()
         except:
             print(f"   No variable {mv} in this file")
-    for ev in electron_vars:
-        all_electron_data[ev] = events[ev].array()
+    #for ev in electron_vars:
+    #    all_electron_data[ev] = events[ev].array()
     for jv in jet_vars:
         all_jet_data[jv] = events[jv].array()
         
-  
     # save out
-    with open(f"{path_to_output}/all_mu_{i}", "wb") as output_file:
+    with open(f"{path_to_output}/all_mu_{loc_root_file_id}", "wb") as output_file:
         pickle.dump(all_muon_data, output_file)
         
     #with open(f"{path_to_output}/all_e_{i}", "wb") as output_file:
      #   pickle.dump(all_electron_data, output_file)
 
-    with open(f"{path_to_output}/all_jet_{i}", "wb") as output_file:
+    with open(f"{path_to_output}/all_jet_{loc_root_file_id}", "wb") as output_file:
         pickle.dump(all_jet_data, output_file)
  
 
 print("All done!")
+print(f"Saved files {file_paths}")
