@@ -49,7 +49,7 @@ Helpful flags:
 - `bkg_fit_degree`: pick an odd number
 - `num_bins_SR`: `int` for the number of bin *boundaries* in the SR
 
-You can specify `epochs` and `batch_size` as an argument to the script. For larger flow architecture changes, create a new config file in the `configs/<your_config.yml>` folder and pass the file with `-c your_config.yml`.
+You can specify `epochs` and `batch_size` as an argument to the script. For larger flow architecture changes, create a new config file in the `configs/<your_config.yaml>` folder and pass the file with `-c your_config.yaml`.
 
 To regenerate flow samples with a different choice of SR binning or or background polynomial fit, use the `-no_train` flag.
 
