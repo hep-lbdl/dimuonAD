@@ -37,7 +37,7 @@ For the ML study in particular, the data must be further preprocessed before bei
 At this point, it is helpful to specify a few `analysis_keywords` to identify the specific project / features of interest. Example keywords for the upsilon analysis can be found in `workflow.yaml.` 
 - `name`: a high-level name for the analysis
 - `particle`: used to define SR and SB definitions in the `workflow` file (see `window_definitions.particle`)
-- `analysis_cuts`: various **lower bounds** for variables pulled or calculated in `02_process_nanoAOD_skimmed.ipynb`
+- `analysis_cuts`: various lower and / or upper bounds for variables pulled or calculated in `02_process_nanoAOD_skimmed.ipynb`
 - `dataset_id`: high-level name for the CMS Open Dataset
 
 ## ML study: network training
@@ -55,12 +55,12 @@ To regenerate flow samples with a different choice of SR binning or or backgroun
 
 Once flow samples have been generated, check the flow performance in the SB with `06_eval_cathode.py`. This code trains a BDT to discriminate SB samples from SB data. The ROC AUC should be close to that of a random classifier (~0.5).
 
-Finally, carry out the bump hunt with `07_run_bump_hunt.py`.
+Finally, carry out the bump hunt with `07_run_bump_hunt.py`. 
 
 Helpful flags:
+- `train_samesign`: if you want to train on samesign muon pairs, instead of opposite-sign pairs
 - `num_to_ensemble`: how many BDTs to train for a single pseudoexperiment
-- `bootstrap_data`: the random seed for a particular data bootstrap. An index of 0 corresponds to the actual data.
-
+To change the BDT architecture, edit the `bdt_hyperparameters` sections of `workflow.yaml`. 
 
 ## Compilation
 08
