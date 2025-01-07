@@ -19,7 +19,7 @@ To acquire the data, run the following commands
 ```
 mkdir <data_storage_dir>/precompiled_data/skimmed_data_2016H_30555
 cd <data_storage_dir>/precompiled_data/skimmed_data_2016H_30555
-./get_files.sh
+TODO
 ```
 `<data_storage_dir>` should be added into the relevant line of `workflow.yaml`.
 
