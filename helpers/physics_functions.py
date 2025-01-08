@@ -57,9 +57,10 @@ BINNING
 "
 """
 
-def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR=6, binning="linear"):
+def get_bins(SR_left, SR_right, SB_left, SB_right, num_bins_SR, binning="linear"):
     
     if binning == "linear":
+
         plot_bins_SR = np.linspace(SR_left, SR_right, num_bins_SR)
         plot_centers_SR = 0.5*(plot_bins_SR[1:] + plot_bins_SR[:-1])
         width = plot_bins_SR[1] - plot_bins_SR[0]
