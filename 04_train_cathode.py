@@ -234,7 +234,7 @@ plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density
 # estimate number of samples
 n_SR_samples = int(np.sum(parametric_fit(plot_centers_SR, *popt_0)))
 # make samples
-mass_samples = get_mass_samples(SR_left, SR_right, args.bkg_fit_degree, n_SR_samples, popt_0)
+mass_samples = get_mass_samples(SR_left, SR_right, n_SR_samples, popt_0, parametric_fit)
 
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
 plt.legend()
