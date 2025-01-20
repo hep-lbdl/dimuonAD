@@ -249,14 +249,17 @@ plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density
 
 SR_samples_label = "SR samples"
 if args.check_bkg_for_peaks:
-    plt.plot(x, summary_dict[0]["function"](x, *summary_dict[0]["popt"]), lw = 3, linestyle = "dashed", label = f"polynomial model", color = "grey")
-    plt.plot(x, summary_dict[1]["function"](x, *summary_dict[1]["popt"]), lw = 3, linestyle = "dashed", label = f"1-peak model", color = "purple")
-    plt.plot(x, summary_dict[2]["function"](x, *summary_dict[2]["popt"]), lw = 3, linestyle = "dashed", label = f"2-peak model", color = "green")
+    plt.plot(x, summary_dict[0]["function"](x, *summary_dict[0]["popt"]), lw = 3, linestyle = "dashed", label = "polynomial model (chi2="+str(np.round(summary_dict[0]["chi2"],3))+")", color = "grey")
+    plt.plot(x, summary_dict[1]["function"](x, *summary_dict[1]["popt"]), lw = 3, linestyle = "dashed", label = "1-peak model (chi2="+str(np.round(summary_dict[1]["chi2"],3))+")", color = "purple")
+    plt.plot(x, summary_dict[2]["function"](x, *summary_dict[2]["popt"]), lw = 3, linestyle = "dashed", label = "2-peak model (chi2="+str(np.round(summary_dict[2]["chi2"],3))+")", color = "green")
     SR_samples_label +=  " N_peaks: "+str(summary_dict["best"]["n_peaks"])
+    plt.title("pval 1 to 0 peak: "+str(np.round(p_value_10, 6))+"\n pval 2 to 1 peak: "+str(np.round(p_value_21, 6)))
     
 plt.plot(x, best_bkg_fit_function(x, *best_bkg_fit_params), lw = 2, label = "best SB fit", color = "red")
 plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = SR_samples_label, color = "red")    
 plt.legend()
+plt.xlabel("m (rescaled)")
+plt.ylabel("Counts")
 plt.savefig(f"{flow_training_dir}/bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}")
          
 

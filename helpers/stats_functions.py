@@ -240,9 +240,9 @@ def check_bkg_for_peaks(masses_to_fit, bkg_fit_degree, SR_left, SR_right, plot_b
     _, p_value_21 = calculate_F_statistic_p_value(chi2_full, chi2_reduced, n_dof_full, n_dof_reduced)
 
     summary_dict = {
-        0:{"function":parametric_fit, "popt":popt_bkg}, 
-        1:{"function":fit_function_reduced, "popt":popt_reduced},
-        2:{"function":fit_function_full, "popt":popt_full},
+        0:{"function":parametric_fit, "popt":popt_bkg, "chi2":chi2_bkg}, 
+        1:{"function":fit_function_reduced, "popt":popt_reduced, "chi2":chi2_reduced},
+        2:{"function":fit_function_full, "popt":popt_full, "chi2":chi2_full},
                      }
     if verbose: print(f"pval 1-to-0: {p_value_10}; pval 2-to-1: {p_value_21}.")
     if p_value_10 <= alpha: # 1-peak model is better than 0 peaks
