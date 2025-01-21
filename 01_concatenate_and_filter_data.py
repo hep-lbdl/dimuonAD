@@ -46,6 +46,7 @@ with open(f"{path_to_input}/all_mu_{files_dict[args.data_id][0]}", "rb") as inpu
 with open(f"{path_to_input}/all_jet_{files_dict[args.data_id][0]}", "rb") as input_file:
     loc_jet_feature = pickle.load(input_file)
     jet_vars = list(loc_jet_feature.keys())
+
     
 triggers_HLT = [var for var in muon_vars if "HLT" in var]
 muon_vars = [var for var in muon_vars if "HLT" not in var]
@@ -60,6 +61,7 @@ print("Jet vars")
 print(jet_vars)
 print()
 
+
 all_data = {
       "dimu_pt": [],
       "dimu_eta": [],
@@ -67,6 +69,8 @@ all_data = {
      "n_muons": [],
      "n_jets": [],
     "dimu_mass": [],
+
+    
     }
 
 single_mu_vars_to_add = {
@@ -114,7 +118,7 @@ for i in range(num_files):
         
     with open(f"{path_to_input}/all_jet_{files_dict[args.data_id][i]}", "rb") as input_file:
         loc_jet_feature = pickle.load(input_file)
-        
+
     """
     EVENT FILTER DEFINITION
     """
