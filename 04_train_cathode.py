@@ -71,6 +71,8 @@ with open(f"{args.workflow_path}.yaml", "r") as file:
 print(f"Feature id: {args.feature_id}")
 print(f"Analysis:", workflow["analysis_keywords"]["name"])
 print(f"Configs: {args.configs}")
+print(f"Training on {samesign_id} samples")
+
 
 
 working_dir = workflow["file_paths"]["working_dir"]

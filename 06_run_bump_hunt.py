@@ -26,8 +26,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-workflow", "--workflow_path", default="workflow", help='ID associated with the directory')
 
 # data-specific arguments
-parser.add_argument("-bf", "--bootstrap_flow", type=int, default=0)
-parser.add_argument("-bd", "--bootstrap_data", type=int)
+#parser.add_argument("-bf", "--bootstrap_flow", type=int, default=0)
+parser.add_argument("-bootstrap", "--bootstrap", default="bootstrap0")
 
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
 parser.add_argument("-fit", "--bkg_fit_degree", default='quintic')
@@ -71,16 +71,16 @@ else:
 
 working_dir = workflow["file_paths"]["working_dir"]
 processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
-flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/bootstrap{args.bootstrap_flow}_{samesign_id}/{args.feature_id}/{args.configs}/"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs}/"
 
 # make dir to save out pickles
-pickle_save_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/pickles/bootstrap{args.bootstrap_flow}_{samesign_id}/{args.feature_id}/"
+pickle_save_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/pickles/{args.bootstrap}_{samesign_id}/{args.feature_id}/"
 if args.run_null:
-    pickle_save_dir += f"bkg_samples/bootstrap{args.bootstrap_data}/"
+    pickle_save_dir += f"bkg_samples/{args.bootstrap}/"
 os.makedirs(pickle_save_dir, exist_ok=True)
 
 
-plots_dir =  workflow["file_paths"]["working_dir"] +"/plots/" + workflow["analysis_keywords"]["name"]+f"/bootstrap{args.bootstrap_data}_{samesign_id}/"
+plots_dir =  workflow["file_paths"]["working_dir"] +"/plots/" + workflow["analysis_keywords"]["name"]+f"/{args.bootstrap}_{samesign_id}/"
 os.makedirs(plots_dir, exist_ok = True)
 if args.run_latent:
     pp = PdfPages(f"{plots_dir}/{args.feature_id}_latent.pdf")
@@ -112,19 +112,19 @@ for key in train_samples_dict.keys():
 if not args.run_null:
     # load in the data corresponding to the train id
     # we actually want the "test band" here -- train is just for flow
-    with open(f"{processed_data_dir}/bootstrap{args.bootstrap_data}_{train_data_id}_test_band_data", "rb") as ifile:
+    with open(f"{processed_data_dir}/{args.bootstrap}_{train_data_id}_test_band_data", "rb") as ifile:
         test_data_dict = pickle.load(ifile)
     # load in the alternative data
-    with open(f"{processed_data_dir}/bootstrap{args.bootstrap_data}_{alt_test_data_id}_test_band_data", "rb") as ifile:
+    with open(f"{processed_data_dir}/{args.bootstrap}_{alt_test_data_id}_test_band_data", "rb") as ifile:
         alt_test_data_dict = pickle.load(ifile)
     
     if args.use_extra_data:
-        with open(f"{processed_data_dir}/bootstrap{args.bootstrap_data}_{train_data_id}_train_band_data", "rb") as ifile:
+        with open(f"{processed_data_dir}/{args.bootstrap}_{train_data_id}_train_band_data", "rb") as ifile:
             ROC_test_data_1_dict = pickle.load(ifile)
 
-    print(f"Loading classifier train samples from {processed_data_dir}/bootstrap{args.bootstrap_data}_{train_data_id}_test_band_data")
-    print(f"Loading classifier train data from {processed_data_dir}/bootstrap{args.bootstrap_data}_{train_data_id}_test_band_data")
-    print(f"Loading alternative test data from {processed_data_dir}/bootstrap{args.bootstrap_data}_{alt_test_data_id}_test_band_dat")
+    print(f"Loading classifier train samples from {processed_data_dir}/{args.bootstrap}_{train_data_id}_test_band_data")
+    print(f"Loading classifier train data from {processed_data_dir}/{args.bootstrap}_{train_data_id}_test_band_data")
+    print(f"Loading alternative test data from {processed_data_dir}/{args.bootstrap}_{alt_test_data_id}_test_band_dat")
     print()
 
 elif args.run_null:
@@ -134,9 +134,9 @@ elif args.run_null:
     with open(f"{processed_data_dir}/bkg_samples/bootstrap{args.bootstrap_data}_{alt_test_data_id}_test_band_data", "rb") as ifile:
         alt_test_data_dict = pickle.load(ifile)
 
-    print(f"Loading classifier train samples from {processed_data_dir}/bkg_samples/bootstrap{args.bootstrap_data}_{train_data_id}_test_band_data")
-    print(f"Loading classifier train data from {processed_data_dir}/bkg_samples/bootstrap{args.bootstrap_data}_{train_data_id}_test_band_data")
-    print(f"Loading alternative test data from {processed_data_dir}/bkg_samples/bootstrap{args.bootstrap_data}_{alt_test_data_id}_test_band_dat")
+    print(f"Loading classifier train samples from {processed_data_dir}/bkg_samples/{args.bootstrap}_{train_data_id}_test_band_data")
+    print(f"Loading classifier train data from {processed_data_dir}/bkg_samples/{args.bootstrap}_{train_data_id}_test_band_data")
+    print(f"Loading alternative test data from {processed_data_dir}/bkg_samples/{args.bootstrap}_{alt_test_data_id}_test_band_dat")
     print()
     
 
