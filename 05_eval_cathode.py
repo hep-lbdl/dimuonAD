@@ -73,8 +73,8 @@ import xgboost as xgb
 
 def run_discriminator(data, samples):
     
-    SB_data_train, SB_data_test = train_test_split(data_dict["SB"], test_size=0.1, random_state=42)
-    SB_samples_train, SB_samples_test = train_test_split(data_dict["SB_samples"], test_size=0.1, random_state=42)
+    SB_data_train, SB_data_test = train_test_split(data, test_size=0.1, random_state=42)
+    SB_samples_train, SB_samples_test = train_test_split(samples, test_size=0.1, random_state=42)
     
     
     SB_samples_train = clean_data(SB_samples_train)
@@ -132,7 +132,7 @@ with open(f"{validations_dir}/{args.feature_id}.txt", "w") as ofile:
         ofile.write("Feature {i} KL div: {ks_dist}. (for gaussian: {ks_gauss})\n".format(i=i, ks_dist=ks_dist, ks_gauss=ks_dists_gaussians[i]))
         
     ofile.write("\n")                                  
-    
+
     auc_mean, auc_std, best_epoch = run_discriminator(data_dict["SB"], data_dict["SB_samples"])
     ofile.write(f"SB total: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
     
@@ -140,4 +140,4 @@ with open(f"{validations_dir}/{args.feature_id}.txt", "w") as ofile:
     ofile.write(f"SBL: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
     
     auc_mean, auc_std, best_epoch = run_discriminator(data_dict["SBH"], data_dict["SBH_samples"])
-    ofile.write(f"SBH : auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
+    ofile.write(f"SBH: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
