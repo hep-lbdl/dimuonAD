@@ -1,9 +1,14 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[43]:
+
 
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from tqdm import tqdm
-import sys  
+import sys
 
 
 from helpers.physics_functions import get_bins
@@ -26,6 +31,8 @@ np.seterr(divide='ignore')
 # 2. `train_samesign = True` comes from running the Ml study on the SS samples.
 # 
 # **CAUTION**: for the histograms, we are truly showing the significance as $\frac{S}{\sqrt{B+{\sigma_B}^2}}$, i.e. we are accounting for the background error. For the ROC curves, this error is *NOT* being taken into account (it's not clear to me that we want this background error when we are just citing the background yield for the FPR)
+
+# In[44]:
 
 
 import yaml
@@ -63,16 +70,18 @@ num_pseudoexperiments = 1
 n_folds = 5
 
 
-# In[3]:
+# In[45]:
 
-num_bins_SR = sys.argv[1] # 16, 12, 8
+
+num_bins_SR = int(sys.argv[1]) # 16, 12, 8
 
 
 pseudo_e_to_plot = 0 # this plots the actual data (not a boostrapped version)
-bkg_fit_degree = sys.argv[2] # 3, 4, 5, 6, 7, 8, 9, 10
+bkg_fit_degree = int(sys.argv[2]) # 3, 4, 5, 6, 7, 8, 9, 10
 
 
-# In[4]:
+
+# In[46]:
 
 
 SB_left = float(workflow["window_definitions"][workflow["analysis_keywords"]["particle"]]["SB_left"])
@@ -90,7 +99,7 @@ print(data_prefix)
 
 # ## Load in the BDT results
 
-# In[5]:
+# In[47]:
 
 
 print(f"Loading data from {flow_training_dir}")
@@ -101,7 +110,7 @@ with open(f"{flow_training_dir}/seed1/configs.txt", "rb") as infile:
 print(f"Feature Set: {feature_set}")
 
 
-# In[18]:
+# In[48]:
 
 
 # if train_samesign = False, this loads in the OS test data
@@ -114,8 +123,13 @@ def load_in_pseudoexperiments(file_string, num_pseudoexps):
 
     master_dict = {}
 
-    with open(f"{pickle_save_dir}/{file_string}_bkg_fit_{bkg_fit_degree}_num_bins_{num_bins_SR}_0_1", "rb") as ifile:
-        loc_dict = pickle.load(ifile)
+    if not train_samesign:
+        with open(f"{pickle_save_dir}/{file_string}_bkg_fit_{bkg_fit_degree}_num_bins_{num_bins_SR}_0_1", "rb") as ifile:
+            loc_dict = pickle.load(ifile)
+    else:
+        with open(f"{pickle_save_dir}/{file_string}_{fit_types[bkg_fit_degree]}_{num_bins_SR}_0_1", "rb") as ifile:
+            loc_dict = pickle.load(ifile)
+
     master_dict = {**loc_dict}
     # load in the bootstraps
     for i in range(1, num_pseudoexps):
@@ -150,7 +164,7 @@ with open(f"{processed_data_dir}/preprocessing_info_bootstrap{bootstrap_flow}", 
      preprocessing_info = pickle.load(ifile)
 
 
-# In[7]:
+# In[49]:
 
 
 import pickle
@@ -169,7 +183,7 @@ with open(path_to_OS_data, "rb") as infile:
 
 # ## Plot histograms for a small number of FPR thresholds
 
-# In[8]:
+# In[50]:
 
 
 fpr_thresholds = [1, 0.25, 0.1, 0.05, 0.01, 0.005, 0.001]
@@ -193,7 +207,7 @@ for pseudo_e in range(num_pseudoexperiments):
             score_cutoffs[pseudo_e][i_fold][threshold] = loc_score_cutoff
 
 
-# In[9]:
+# In[51]:
 
 
 def plot_upsilon_resonances(ax):
@@ -210,7 +224,7 @@ def plot_upsilon_resonances(ax):
     # ax.text(10.580 * 0.995, 1e4, r"$\Upsilon(4S)$", rotation=90, verticalalignment="center", horizontalalignment="right", fontsize=10)
 
 
-# In[16]:
+# In[52]:
 
 
 def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_cutoffs_by_fold, 
@@ -296,10 +310,9 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
         plt.plot(plot_centers_all, parametric_fit(plot_centers_all, *popt), lw = 2, linestyle = "dashed", color = f"C{t}")    
         function_with_band(ax, parametric_fit, [SB_left, SB_right], popt, pcov, color = f"C{t}")
         # calculate significance of bump
-        S, B, q0 = calculate_test_statistic(filtered_masses, SR_left, SR_right, SB_left, SB_right, degree = fit_degree, starting_guess = popt)
+        S, B, q0 = calculate_test_statistic(filtered_masses, SR_left, SR_right, SB_left, SB_right, num_bins_SR, degree = fit_degree, starting_guess = popt)
         print(threshold, S, B, np.sqrt(q0))
         bin_width = (SR_right - SR_left)/num_bins_SR
-        print(integral(SR_left, SR_right, bin_width, *popt))
 
 
         total_events = len(filtered_masses)
@@ -372,7 +385,7 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
     # plot the fit function
     plt.plot(plot_centers_all, parametric_fit(plot_centers_all, *popt), lw = 2, linestyle = "dashed", color = f"black")    
     function_with_band(ax, parametric_fit, [SB_left, SB_right], popt, pcov, color = f"black")
-    S, B, q0 = calculate_test_statistic(filtered_masses, SR_left, SR_right, SB_left, SB_right, degree = fit_degree, starting_guess = popt)
+    S, B, q0 = calculate_test_statistic(filtered_masses, SR_left, SR_right, SB_left, SB_right, num_bins_SR, degree = fit_degree, starting_guess = popt)
     print(S, B, np.sqrt(q0))
     print(popt)
     
@@ -399,7 +412,7 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
     
 
 
-# In[17]:
+# In[53]:
 
 
 """
@@ -415,7 +428,7 @@ with open(f"{plot_data_dir}{data_prefix}_histogram_data_{bkg_fit_degree}_{num_bi
 print("Saved Data to " + f"{plot_data_dir}{data_prefix}_histogram_data_{bkg_fit_degree}_{num_bins_SR}.pickle")
 
 
-# In[12]:
+# In[54]:
 
 
 """
@@ -432,7 +445,7 @@ with open(f"{plot_data_dir}{data_prefix}_histogram_data_alt_{bkg_fit_degree}_{nu
 
 # # Feature Plots
 
-# In[14]:
+# In[55]:
 
 
 from helpers.data_transforms import scaled_to_physical_transform
@@ -557,7 +570,7 @@ def plot_features(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_
     return save_data
 
 
-# In[ ]:
+# In[56]:
 
 
 save_data = plot_features(fpr_thresholds, all_test_data_splits[pseudo_e_to_plot], all_scores_splits[pseudo_e_to_plot], score_cutoffs[pseudo_e_to_plot], scaler, SR_left, SR_right, take_score_avg=False)
@@ -568,7 +581,7 @@ with open(f"{plot_data_dir}{data_prefix}_feature_data_{bkg_fit_degree}_{num_bins
 
 # # Signficance Plots
 
-# In[16]:
+# In[57]:
 
 
 n_folds = 5
@@ -632,6 +645,8 @@ def get_classifier_metrics_high_stats(dataset_by_pseudo_e, scores_by_pseudo_e, m
         for t, threshold in enumerate(fpr_thresholds_finegrained):
 
 
+
+
             # Use interpolation to find the cut point that gives the desired FPR
             best_feature_cut = feature_cut_points[np.argmin(np.abs(np.array(FPR)-threshold))]
 
@@ -646,18 +661,31 @@ def get_classifier_metrics_high_stats(dataset_by_pseudo_e, scores_by_pseudo_e, m
 
              # calculate significance of bump
             popt, pcov, chi2, y_vals, n_dof = curve_fit_m_inv(filtered_masses, bkg_fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
-            S,B, q0 = calculate_test_statistic(filtered_masses, SR_left, SR_right, SB_left, SB_right, degree = bkg_fit_degree, starting_guess = popt, verbose_plot = False)
+            S,B, q0 = calculate_test_statistic(filtered_masses, SR_left, SR_right, SB_left, SB_right, num_bins_SR, degree = bkg_fit_degree, starting_guess = popt, verbose_plot = False)
             print("S: ", S, "B: ", B, "sqrt(q0): ", np.sqrt(q0))
 
             significances[t, pseudo_e] = np.sqrt(q0)
 
+            if threshold == 1.0:
+
+                mu = (S) / (S + B)
+                likelihood_ratios = (all_scores) / (1 - all_scores)
+                weights = (likelihood_ratios - (1-mu)) / mu
+                weights = np.clip(weights, 0, 1e9)
+
+                popt, pcov, chi2, y_vals, n_dof = curve_fit_m_inv(all_masses, bkg_fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB, weights = weights)
+                s, b, bonus_q0, popt = calculate_test_statistic(all_masses,  SR_left, SR_right, SB_left, SB_right, num_bins_SR,  weights = weights, degree = bkg_fit_degree, verbose_plot = False, starting_guess = popt, return_popt = True)
+
+                print("Full Likelihood Fit: S: ", s, "B: ", b, "sqrt(q0): ", np.sqrt(bonus_q0))
+
+
         
     
-    return significances
+    return significances, bonus_q0
 
 
 
-# In[ ]:
+# In[58]:
 
 
 # Reformat alt to not have the 'alt' key
@@ -669,20 +697,26 @@ for pseudo_e in range(num_pseudoexperiments):
 
 
 
-# In[ ]:
+# In[59]:
 
 
-significances = get_classifier_metrics_high_stats(all_test_data_splits, all_scores_splits, scaler)
+significances, full_q0 = get_classifier_metrics_high_stats(all_test_data_splits, all_scores_splits, scaler)
 with open(f"{plot_data_dir}{data_prefix}_significances_{bkg_fit_degree}_{num_bins_SR}.pickle", "wb") as ofile:
     pickle.dump(significances, ofile)
+with open(f"{plot_data_dir}{data_prefix}_full_q0_{bkg_fit_degree}_{num_bins_SR}.pickle", "wb") as ofile:
+    pickle.dump(full_q0, ofile)
 
 
-significances_alt = get_classifier_metrics_high_stats(all_alt_data_splits_formatted, all_alt_scores_splits_formatted, scaler)
+
+significances_alt, full_q0_alt = get_classifier_metrics_high_stats(all_alt_data_splits_formatted, all_alt_scores_splits_formatted, scaler)
 with open(f"{plot_data_dir}{data_prefix}_significances_alt_{bkg_fit_degree}_{num_bins_SR}.pickle", "wb") as ofile:
     pickle.dump(significances_alt, ofile)
+with open(f"{plot_data_dir}{data_prefix}_full_q0_alt_{bkg_fit_degree}_{num_bins_SR}.pickle", "wb") as ofile:
+    pickle.dump(full_q0_alt, ofile)
 
 
-# In[19]:
+
+# In[60]:
 
 
 from helpers.plotting import feature_bins
@@ -798,7 +832,7 @@ def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_degree, title, 
 
             # calculate significance of bump
             popt, pcov, chi2, y_vals, n_dof = curve_fit_m_inv(filtered_masses, fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
-            S,B, q0 = calculate_test_statistic(filtered_masses, SR_left, SR_right, SB_left, SB_right, degree = fit_degree, starting_guess = popt, verbose_plot = False)
+            S,B, q0 = calculate_test_statistic(filtered_masses, SR_left, SR_right, SB_left, SB_right, num_bins_SR, degree = fit_degree, starting_guess = popt, verbose_plot = False)
             print("S: ", S, "B: ", B, "sqrt(q0): ", np.sqrt(q0))
 
             significances[t, pseudo_e] = np.sqrt(q0)
@@ -807,20 +841,20 @@ def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_degree, title, 
     return significances
 
 
-# In[20]:
+# In[61]:
 
 
 # for i in range(n_folds):
 #     all_test_data_splits[pseudo_e][i][:,0] = all_test_data_splits[pseudo_e][i][:,1] + all_test_data_splits[pseudo_e][i][:,2]
 
 
-# In[40]:
+# In[66]:
 
 
 feature_SIGs = {}
 feature_SIGs_alt = {}
 
-flip_features = [True, True, True, False] 
+flip_features = [False, True, True, False] 
 
 
 
@@ -843,7 +877,7 @@ for (i, feature) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "random"]):
   
 
 
-# In[41]:
+# In[63]:
 
 
 # Add the ordinary TPR, FPR, ROC, SIC to dictionary with key "CATHODE"
@@ -851,7 +885,7 @@ feature_SIGs["CATHODE"] = significances
 feature_SIGs_alt["CATHODE"] = significances_alt
 
 
-# In[ ]:
+# In[64]:
 
 
 # FPR Variant of SIC
@@ -877,6 +911,10 @@ for i in range(num_features):
 for (i, key) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "CATHODE"]):
     ax.hist([-1], color = colors[i], alpha = 0.25, label = key, histtype = "stepfilled")
 
+
+
+bonus_q0 = full_q0
+ax.axhline(np.sqrt(bonus_q0), color = "darkblue", linestyle = "-", label = "Full Likelihood Fit")
 
 # print(feature_SIGs["CATHODE"][:,0])
 
@@ -907,10 +945,10 @@ legend_title = r"$\bf{CMS 2016 Open Data: Dimuons}$"
 
 plt.legend(title = legend_title, loc = "upper center", ncol = 2, fontsize = 14)
 plt.xscale("log")
-plt.ylim(0.0, 10)
+plt.ylim(0.0, 12)
 
 
-# In[43]:
+# In[65]:
 
 
 # same plot but for the alternative data
@@ -977,6 +1015,43 @@ plt.legend(title = legend_title, loc = "upper center", ncol = 2, fontsize = 14)
 plt.xscale("log")
 plt.ylim(0.0, 10)
 # plt.yscale("log")
+
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
 
 
 
