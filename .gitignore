@@ -4,4 +4,6 @@ slurm*
 */.ipynb_checkpoints/ 
 */__pycache__/ 
 .ipynb_checkpoints/
-__pycache__/ 
+__pycache__/
+flow_training_validations/
+plot_data/ 
