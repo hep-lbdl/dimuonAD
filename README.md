@@ -1,6 +1,6 @@
-## [paper title]
+## Associated Code: Isolating Unisolated Upsilons with Anomaly Detection in CMS Open Data
 
-This repository contains all the scripts needed to generate the plots in the papers [link to upsilon paper] and [link to general paper]
+This repository contains all the scripts needed to generate the plots in the paper [link to upsilon paper].
 
 The analysis is based on the [DoubleMuon primary dataset from RunH of 2016](https://opendata.cern.ch/record/30555).
 
@@ -56,7 +56,6 @@ At this point, it is helpful to specify a few `analysis_keywords` to identify th
 
 ## ML study: network training
 
-
 Once some version of notebook `03` has been run, use the script `04_train_cathode.py` to train the normalizing flow on the auxiliary features, conditioned on the invariant mass.
 
 Helpful flags:
@@ -75,12 +74,12 @@ Finally, carry out the bump hunt with `06_run_bump_hunt.py`.
 Helpful flags:
 - `train_samesign`: if you want to train on samesign muon pairs, instead of opposite-sign pairs
 - `num_to_ensemble`: how many BDTs to train for a single pseudoexperiment
-To change the BDT architecture, edit the `bdt_hyperparameters` sections of `workflow.yaml`.
+- To change the BDT architecture, you can edit the relevant `bdts.yml` in the `configs` folder.
 
-Batch scripts for `bash` and `slurm` jobs can be make with `make_scripts.ipynb`
+The notebook `make_scripts.ipynb` may be helpful for generating scripts for large batch jobs.
 
 ## Compilation
-08
+07
 
 ## Plotting
-09
+08
