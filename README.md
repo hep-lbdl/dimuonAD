@@ -46,7 +46,7 @@ In addition, a specific set of analysis features for the classical and ML studie
 
 For the ML study in particular, the data must be further preprocessed before being fed into the CATHODE-inspired normalizing flow architecture. We first logit-transform all the features (except the dimuon invariant mass, which is standard-scaled), then min-max scale them to the range (0, 1). This transformation was found to be effective for the normalizing flow training. 
 
-`03_preprocess_data_lowmass.ipynb` applies the cuts for a single choice of signal region (SR) and sidebands (SB). **TODO: finish versions for lowmass scan and BSM signal injection**
+`03_preprocess_data_lowmass.ipynb` applies the cuts for a single choice of signal region (SR) and sidebands (SB).
 
 At this point, it is helpful to specify a few `analysis_keywords` to identify the specific project / features of interest. Example keywords for the upsilon analysis can be found in `workflow.yaml.` 
 - `name`: a high-level name for the analysis
@@ -55,6 +55,7 @@ At this point, it is helpful to specify a few `analysis_keywords` to identify th
 - `dataset_id`: high-level name for the CMS Open Dataset
 
 ## ML study: network training
+
 
 Once some version of notebook `03` has been run, use the script `04_train_cathode.py` to train the normalizing flow on the auxiliary features, conditioned on the invariant mass.
 
@@ -74,7 +75,9 @@ Finally, carry out the bump hunt with `06_run_bump_hunt.py`.
 Helpful flags:
 - `train_samesign`: if you want to train on samesign muon pairs, instead of opposite-sign pairs
 - `num_to_ensemble`: how many BDTs to train for a single pseudoexperiment
-To change the BDT architecture, edit the `bdt_hyperparameters` sections of `workflow.yaml`. 
+To change the BDT architecture, edit the `bdt_hyperparameters` sections of `workflow.yaml`.
+
+Batch scripts for `bash` and `slurm` jobs can be make with `make_scripts.ipynb`
 
 ## Compilation
 08
