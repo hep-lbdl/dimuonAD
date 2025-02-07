@@ -1,2 +1,0 @@
-ALL_PACKAGES += Test/MiniAnalyzer
-subdirs_src_Test_MiniAnalyzer := src_Test_MiniAnalyzer_python src_Test_MiniAnalyzer_plugins
