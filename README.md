@@ -78,8 +78,17 @@ Helpful flags:
 
 The notebook `make_scripts.ipynb` may be helpful for generating scripts for large batch jobs.
 
-## Compilation
-07
+## Significance Calculation
 
-## Plotting
-08
+After all previous files up through `06` have been run, signal significances can now be calculated.
+
+Helpful flags:
+- 
+
+
+## Plotting (Optional)
+
+After `07` has been run, plots can be rendered. Note that `07` will already produce all necessary plots -- the purpose of notebook 08 is solely to produce paper-quality renders, and is an optional part of the pipeline.
+
+
+After
