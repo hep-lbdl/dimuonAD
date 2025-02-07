@@ -36,7 +36,8 @@ parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 # flow-specific arguments
 parser.add_argument("-fid", "--feature_id")
 parser.add_argument('-seeds', '--seeds', default="1")
-parser.add_argument("-c", "--configs", default="CATHODE_8")
+parser.add_argument("-c", "--configs_flow", default="CATHODE_8")
+parser.add_argument("-c", "--configs_bdt", default="bdt")
 
 # BDT-specific arguments
 parser.add_argument("-ne", "--num_to_ensemble", default=100, type=int) # how many BDTs to train for a single pseudoexperiment
@@ -176,7 +177,9 @@ SR_min_rescaled = np.min(banded_test_data["SR"][:,-1])
 SR_max_rescaled = np.max(banded_test_data["SR"][:,-1])
 
 # BDT HYPERPARAMETERS 
-bdt_hyperparams_dict = workflow["bdt_hyperparameters"]
+with open(f"{args.configs_bdt}.yaml", "r") as file:
+    bdt_hyperparams_dict = yaml.safe_load(file)
+    
 bdt_hyperparams_dict["n_ensemble"] = args.num_to_ensemble
 
 all_test_data_splits = {pseudo_e:{} for pseudo_e in range(args.start, args.stop)}
