@@ -38,9 +38,8 @@ Other loose event filters and selection cuts can be applied at this level (e.g. 
 Next, analysis-dependent cuts and modifications need to be applied to the data. These may involve:
 
 - choosing signal region(s) (SR) and sideband region(s) (SB) (and therefore choosing a specific resonance to analyze)
-- applying specific observable cuts (such as the anti-isolation cut for the $\Upsilon$ study (cite))
+- applying specific observable cuts (such as the anti-isolation cut for the $\Upsilon$ study)
 - applying additional event filters (e.g. triggering)
-- injecting a BSM signal for setting limits (cite).
 
 In addition, a specific set of analysis features for the classical and ML studies can be specified. 
 
