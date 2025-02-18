@@ -1,2 +1,0 @@
-01:/usr/bin/rm -f lib/slc7_amd64_gcc700/pluginPhysicsToolsNanoAODJMARPlugins.so lib/slc7_amd64_gcc700/PhysicsToolsNanoAODJMARPlugins.edmplugin
-90:edmPluginRefresh lib/slc7_amd64_gcc700

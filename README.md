@@ -1,6 +1,6 @@
-## [paper title]
+## Associated Code: Isolating Unisolated Upsilons with Anomaly Detection in CMS Open Data
 
-This repository contains all the scripts needed to generate the plots in the papers [link to upsilon paper] and [link to general paper]
+This repository contains all the scripts needed to generate the plots in the paper [link to upsilon paper].
 
 The analysis is based on the [DoubleMuon primary dataset from RunH of 2016](https://opendata.cern.ch/record/30555).
 
@@ -38,15 +38,14 @@ Other loose event filters and selection cuts can be applied at this level (e.g. 
 Next, analysis-dependent cuts and modifications need to be applied to the data. These may involve:
 
 - choosing signal region(s) (SR) and sideband region(s) (SB) (and therefore choosing a specific resonance to analyze)
-- applying specific observable cuts (such as the anti-isolation cut for the $\Upsilon$ study (cite))
+- applying specific observable cuts (such as the anti-isolation cut for the $\Upsilon$ study)
 - applying additional event filters (e.g. triggering)
-- injecting a BSM signal for setting limits (cite).
 
 In addition, a specific set of analysis features for the classical and ML studies can be specified. 
 
 For the ML study in particular, the data must be further preprocessed before being fed into the CATHODE-inspired normalizing flow architecture. We first logit-transform all the features (except the dimuon invariant mass, which is standard-scaled), then min-max scale them to the range (0, 1). This transformation was found to be effective for the normalizing flow training. 
 
-`03_preprocess_data_lowmass.ipynb` applies the cuts for a single choice of signal region (SR) and sidebands (SB). **TODO: finish versions for lowmass scan and BSM signal injection**
+`03_preprocess_data_lowmass.ipynb` applies the cuts for a single choice of signal region (SR) and sidebands (SB).
 
 At this point, it is helpful to specify a few `analysis_keywords` to identify the specific project / features of interest. Example keywords for the upsilon analysis can be found in `workflow.yaml.` 
 - `name`: a high-level name for the analysis
@@ -74,10 +73,21 @@ Finally, carry out the bump hunt with `06_run_bump_hunt.py`.
 Helpful flags:
 - `train_samesign`: if you want to train on samesign muon pairs, instead of opposite-sign pairs
 - `num_to_ensemble`: how many BDTs to train for a single pseudoexperiment
-To change the BDT architecture, edit the `bdt_hyperparameters` sections of `workflow.yaml`. 
+- To change the BDT architecture, you can edit the relevant `bdts.yml` in the `configs` folder.
 
-## Compilation
-08
+The notebook `make_scripts.ipynb` may be helpful for generating scripts for large batch jobs.
 
-## Plotting
-09
+## Significance Calculation
+
+After all previous files up through `06` have been run, signal significances can now be calculated.
+
+Helpful flags:
+- 
+
+
+## Plotting (Optional)
+
+After `07` has been run, plots can be rendered. Note that `07` will already produce all necessary plots -- the purpose of notebook 08 is solely to produce paper-quality renders, and is an optional part of the pipeline.
+
+
+After

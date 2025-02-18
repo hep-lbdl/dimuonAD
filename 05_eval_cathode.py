@@ -23,7 +23,9 @@ parser.add_argument('--use_inner_bands', action="store_true", default=False)
 # flow-specific arguments
 parser.add_argument("-fid", "--feature_id")
 parser.add_argument('-seeds', '--seeds', default="1")
-parser.add_argument("-c", "--configs", default="CATHODE_8")
+parser.add_argument("-c", "--configs_flow", default="CATHODE_8")
+parser.add_argument("-c", "--configs_bdt", default="bdt")
+
 
 args = parser.parse_args()
 
@@ -40,10 +42,11 @@ import yaml
 with open(f"{args.workflow_path}.yaml", "r") as file:
     workflow = yaml.safe_load(file)
 
+
 working_dir = workflow["file_paths"]["working_dir"]
-path_to_config_file = f"{working_dir}/configs/{args.configs}.yml"
+path_to_config_file = f"{working_dir}/configs/{args.configs_flow}.yml"
 processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
-flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs}/"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs_flow}/"
 
 
 # load in all the flow models across different seeds
@@ -60,12 +63,9 @@ for seed in seeds_list:
 for key in data_dict.keys():
     data_dict[key] = np.vstack(data_dict[key])
 
-
-n_estimators = 100 # number of boosting stages
-max_depth = 20 # max depth of individual regression estimators; related to complexity
-learning_rate = 0.1
-subsample = 0.5 # fraction of samples to be used for fitting the individual base learners
-early_stopping_rounds = 10 # stop training BDT is validation loss doesn't improve after this many rounds
+# BDT HYPERPARAMETERS 
+with open(f"{args.configs_bdt}.yaml", "r") as file:
+    bdt_hyperparams_dict = yaml.safe_load(file)
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score
@@ -73,8 +73,8 @@ import xgboost as xgb
 
 def run_discriminator(data, samples):
     
-    SB_data_train, SB_data_test = train_test_split(data_dict["SB"], test_size=0.1, random_state=42)
-    SB_samples_train, SB_samples_test = train_test_split(data_dict["SB_samples"], test_size=0.1, random_state=42)
+    SB_data_train, SB_data_test = train_test_split(data, test_size=0.1, random_state=42)
+    SB_samples_train, SB_samples_test = train_test_split(samples, test_size=0.1, random_state=42)
     
     
     SB_samples_train = clean_data(SB_samples_train)
@@ -96,8 +96,8 @@ def run_discriminator(data, samples):
 
         eval_set = [(X_train, Y_train), (X_val, Y_val)]
 
-        bst_i = xgb.XGBClassifier(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate, 
-                                  subsample=subsample,  early_stopping_rounds=early_stopping_rounds,
+        bst_i = xgb.XGBClassifier(n_estimators=bdt_hyperparams_dict["n_estimators"], max_depth=bdt_hyperparams_dict["max_depth"], learning_rate=bdt_hyperparams_dict["learning_rate"], 
+                                  subsample=bdt_hyperparams_dict["subsample"],  early_stopping_rounds=bdt_hyperparams_dict["early_stopping_rounds"],
                                   objective='binary:logistic', 
                                           random_state = i, eval_metric="logloss")
 
@@ -110,7 +110,7 @@ def run_discriminator(data, samples):
         loc_scores =  bst_i.predict_proba(X_val, iteration_range=(0,bst_i.best_iteration))[:,1]
 
         loc_auc = roc_auc_score(Y_val, loc_scores)
-        if loc_auc < 0.5: loc_auc = 1.0 - loc_auc
+        #if loc_auc < 0.5: loc_auc = 1.0 - loc_auc
         #loc_acc = accuracy_score(Y_val, np.round(loc_scores))
 
         auc_list.append(loc_auc)
@@ -132,7 +132,7 @@ with open(f"{validations_dir}/{args.feature_id}.txt", "w") as ofile:
         ofile.write("Feature {i} KL div: {ks_dist}. (for gaussian: {ks_gauss})\n".format(i=i, ks_dist=ks_dist, ks_gauss=ks_dists_gaussians[i]))
         
     ofile.write("\n")                                  
-    
+
     auc_mean, auc_std, best_epoch = run_discriminator(data_dict["SB"], data_dict["SB_samples"])
     ofile.write(f"SB total: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
     
@@ -140,4 +140,4 @@ with open(f"{validations_dir}/{args.feature_id}.txt", "w") as ofile:
     ofile.write(f"SBL: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
     
     auc_mean, auc_std, best_epoch = run_discriminator(data_dict["SBH"], data_dict["SBH_samples"])
-    ofile.write(f"SBH : auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
+    ofile.write(f"SBH: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")

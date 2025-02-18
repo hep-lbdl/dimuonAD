@@ -12,7 +12,7 @@ from helpers.density_estimator import DensityEstimator
 from helpers.ANODE_training_utils import train_ANODE, plot_ANODE_losses
 from helpers.data_transforms import clean_data
 from helpers.physics_functions import get_bins, get_bins_for_scan
-from helpers.stats_functions import curve_fit_m_inv, parametric_fit
+from helpers.stats_functions import curve_fit_m_inv, parametric_fit, check_bkg_for_peaks
 
 from helpers.plotting import *
 from helpers.flow_sampling import get_mass_samples, get_flow_samples
@@ -32,6 +32,8 @@ parser.add_argument('-premade_bins', '--premade_bins', action="store_true", defa
 parser.add_argument('-win', '--window_index', type=int, help='for the lowmass scan, the bin definitions are fixed and should be loaded in')
 
 parser.add_argument('--use_inner_bands', action="store_true", default=False)
+parser.add_argument('-peaks', '--check_bkg_for_peaks', action="store_true", default=False)
+
 #parser.add_argument('--use_extra_data', action="store_true", default=False)
 
 # flow-specific arguments
@@ -69,6 +71,8 @@ with open(f"{args.workflow_path}.yaml", "r") as file:
 print(f"Feature id: {args.feature_id}")
 print(f"Analysis:", workflow["analysis_keywords"]["name"])
 print(f"Configs: {args.configs}")
+print(f"Training on {samesign_id} samples")
+
 
 
 working_dir = workflow["file_paths"]["working_dir"]
@@ -222,23 +226,42 @@ else:
     SR_right, SB_right = np.min(data_dict["SBH"][:,-1].reshape(-1)),  np.max(data_dict["SBH"][:,-1].reshape(-1))
     plot_bins_all, plot_bins_SR, plot_bins_left, plot_bins_right, plot_centers_all, plot_centers_SR, plot_centers_SB = get_bins(SR_left, SR_right, SB_left, SB_right, binning="linear", num_bins_SR=args.num_bins_SR)
     
-x = np.linspace(SB_left, SB_right, 100) # plot curve fit
+print()
+print("Starting background fit procedure...")
+# do the background fit
+if args.check_bkg_for_peaks:
+    p_value_10, p_value_21, summary_dict = check_bkg_for_peaks(masses_to_fit, args.bkg_fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB, verbose=True)
+    best_bkg_fit_function = summary_dict["best"]["function"]
+    best_bkg_fit_params = summary_dict["best"]["popt"]
 
-
-popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, args.bkg_fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
-
-plt.figure(figsize = (7,5))
-plt.plot(x, parametric_fit(x, *popt_0), lw = 3, linestyle = "dashed", label = "SB fit")
-plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "SB data") 
+else: # assume there are no peaks in he bkg
+    popt_0, _, _, _, _ = curve_fit_m_inv(masses_to_fit, args.bkg_fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB)
+    best_bkg_fit_function = parametric_fit
+    best_bkg_fit_params = popt_0
 
 # estimate number of samples
-n_SR_samples = int(np.sum(parametric_fit(plot_centers_SR, *popt_0)))
+n_SR_samples = int(np.sum(best_bkg_fit_function(plot_centers_SR, *best_bkg_fit_params)))
 # make samples
-mass_samples = get_mass_samples(SR_left, SR_right, args.bkg_fit_degree, n_SR_samples, popt_0)
+mass_samples = get_mass_samples(SR_left, SR_right, n_SR_samples, best_bkg_fit_params, best_bkg_fit_function)
 
-plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "samples")    
+# plot
+x = np.linspace(SB_left, SB_right, 100) # plot curve fit
+plt.figure(figsize = (7,5))
+plt.hist(masses_to_fit, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = "SB data", color = "blue") 
+
+SR_samples_label = "SR samples"
+if args.check_bkg_for_peaks:
+    plt.plot(x, summary_dict[0]["function"](x, *summary_dict[0]["popt"]), lw = 3, linestyle = "dashed", label = "polynomial model (chi2="+str(np.round(summary_dict[0]["chi2"],3))+")", color = "grey")
+    plt.plot(x, summary_dict[1]["function"](x, *summary_dict[1]["popt"]), lw = 3, linestyle = "dashed", label = "1-peak model (chi2="+str(np.round(summary_dict[1]["chi2"],3))+")", color = "purple")
+    plt.plot(x, summary_dict[2]["function"](x, *summary_dict[2]["popt"]), lw = 3, linestyle = "dashed", label = "2-peak model (chi2="+str(np.round(summary_dict[2]["chi2"],3))+")", color = "green")
+    SR_samples_label +=  " N_peaks: "+str(summary_dict["best"]["n_peaks"])
+    plt.title("pval 1 to 0 peak: "+str(np.round(p_value_10, 6))+"\n pval 2 to 1 peak: "+str(np.round(p_value_21, 6)))
+    
+plt.plot(x, best_bkg_fit_function(x, *best_bkg_fit_params), lw = 2, label = "best SB fit", color = "red")
+plt.hist(mass_samples, bins = plot_bins_all, lw = 2, histtype = "step", density = False, label = SR_samples_label, color = "red")    
 plt.legend()
-
+plt.xlabel("m (rescaled)")
+plt.ylabel("Counts")
 plt.savefig(f"{flow_training_dir}/bkg_fit_{args.bkg_fit_degree}_num_bins_{args.num_bins_SR}")
          
 

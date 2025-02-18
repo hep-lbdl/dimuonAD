@@ -1,2 +1,0 @@
-ALL_PACKAGES += PhysicsTools/PFNano
-subdirs_src_PhysicsTools_PFNano := src_PhysicsTools_PFNano_plugins src_PhysicsTools_PFNano_python
