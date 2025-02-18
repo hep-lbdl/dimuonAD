@@ -4,7 +4,7 @@ This repository contains all the scripts needed to generate the plots in the pap
 
 The analysis is based on the [DoubleMuon primary dataset from RunH of 2016](https://opendata.cern.ch/record/30555).
 
-## Data preparation
+## Step 0: Data preparation
 At **this zenodo link**, we provide a selection of muon and jet variables from the DoubleMuon Primary Dataset . All events in the Zenodo come from validated luminosity runs. 
 
 Muon variables: `Muon_pt`, `Muon_eta`, `Muon_phi`, `Muon_charge`, `Muon_pfRelIso03_all`, `Muon_pfRelIso04_all`, `Muon_tightId`, `Muon_jetIdx`, `Muon_ip3d`, `Muon_jetRelIso`, `Muon_dxy`, `Muon_dz`
@@ -34,7 +34,7 @@ Other loose event filters and selection cuts can be applied at this level (e.g. 
 
  `02_visualize_data.ipynb` is a sample notebook to quickly visualize features with and without cuts.
 
-## Analysis preparation
+## Step 1: Analysis preparation
 Next, analysis-dependent cuts and modifications need to be applied to the data. These may involve:
 
 - choosing signal region(s) (SR) and sideband region(s) (SB) (and therefore choosing a specific resonance to analyze)
@@ -53,7 +53,7 @@ At this point, it is helpful to specify a few `analysis_keywords` to identify th
 - `analysis_cuts`: various lower and / or upper bounds for variables pulled or calculated in `01_concatenate_and_filter_data.py`
 - `dataset_id`: high-level name for the CMS Open Dataset
 
-## ML study: network training
+## Step 2: ML study: network training
 
 Once some version of notebook `03` has been run, use the script `04_train_cathode.py` to train the normalizing flow on the auxiliary features, conditioned on the invariant mass.
 
@@ -77,17 +77,31 @@ Helpful flags:
 
 The notebook `make_scripts.ipynb` may be helpful for generating scripts for large batch jobs.
 
-## Significance Calculation
+## Step 3: Significance Calculation
 
-After all previous files up through `06` have been run, signal significances can now be calculated.
+After all previous files up through `06` have been run, signal significances can now be calculated using the file `07_significances.py`.  
 
-Helpful flags:
-- 
+You can specificy `num_bins_SR` and `fit_degree` as arguments to the script. For example, to reproduce the main analysis of the paper (Plot 2b), use `python 07_significances.py 12 5`. This will produce the significances for:
+1. The cut-and-count based on individual features.
+2. The cut-and-count based on the ML classifier
+3. The likelihood reweighting method.
+Moreover, this will also produce the significances as tested on the `alternate` test dataset, which is the opposite of the primary test dataset as specified by the `train_samesign` flag.
+
+The input arguments flags are:
+- `num_bins_SR`: same as above; `int` for the number of bin *boundaries* in the SR
+- `bkg_fit_degree`: same as above; `int` degree.
+- `train_samesign`: same as above; if you want to run the "validation" analysis rather than the main one. Defaults to `False`. 
+
+Once the script is run, output files will be generated with the significances in a new folder `plot_data`. This files can be used in the next step for plotting with file `08_render.ipynb`. The values are also printed out. Additionally, hisotgrams are saved with the features after sequential cuts in the same folder for later plotting.
+
+Alternatively, the notebook `08_significances.ipynb` can be used to get the significances of individual analyses. It will also produce plots.
 
 
-## Plotting (Optional)
 
-After `07` has been run, plots can be rendered. Note that `07` will already produce all necessary plots -- the purpose of notebook 08 is solely to produce paper-quality renders, and is an optional part of the pipeline.
+## Step 4: Plotting (Optional)
 
+After `07` has been run, plots can be rendered. Note that the notebook `07_significances.ipynb` will already produce all necessary plots -- the purpose of notebook 08 is solely to produce paper-quality renders, and is an optional part of the pipeline. No analyses whatsoever is done here.
 
-After
+This notebook contains code for loading in the files produced in the `plot_data` folder. From these, the data can be read out and plotted as desired by the user.
+
+The plots in this notebook are rendered using [rikabplotlib](https://github.com/rikab/rikabplotlib). We note that this is completely optional, and similar plots can be rendered using by switching the import to `# from helpers.plotting import newplot, hist_with_outline, hist_with_errors, function_with_band, stamp` if desired.
