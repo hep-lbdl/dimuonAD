@@ -42,7 +42,6 @@ with open("workflow.yaml", "r") as file:
 feature_id = "mix_2"
 bootstrap_flow = 0 # don't change this from 0
 
-train_samesign = False
 # somewhat complicated code to set naming conventions
 if train_samesign:
     train_data_id = "SS"
@@ -79,6 +78,10 @@ num_bins_SR = int(sys.argv[1]) # 16, 12, 8
 pseudo_e_to_plot = 0 # this plots the actual data (not a boostrapped version)
 bkg_fit_degree = int(sys.argv[2]) # 3, 4, 5, 6, 7, 8, 9, 10
 
+if len(sys.argv) > 3:
+    train_samesign = bool(sys.argv[3])
+else:
+    train_samesign = False
 
 
 # In[46]:
