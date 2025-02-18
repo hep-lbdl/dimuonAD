@@ -4,6 +4,9 @@ This repository contains all the scripts needed to generate the plots in the pap
 
 The analysis is based on the [DoubleMuon primary dataset from RunH of 2016](https://opendata.cern.ch/record/30555).
 
+![ ](https://github.com/hep-lbdl/dimuonAD/blob/rrm_edits/plots/png_render.png)
+
+
 ## Step 0: Data preparation
 At **this zenodo link**, we provide a selection of muon and jet variables from the DoubleMuon Primary Dataset . All events in the Zenodo come from validated luminosity runs. 
 
@@ -105,3 +108,8 @@ After `07` has been run, plots can be rendered. Note that the notebook `07_signi
 This notebook contains code for loading in the files produced in the `plot_data` folder. From these, the data can be read out and plotted as desired by the user.
 
 The plots in this notebook are rendered using [rikabplotlib](https://github.com/rikab/rikabplotlib). We note that this is completely optional, and similar plots can be rendered using by switching the import to `# from helpers.plotting import newplot, hist_with_outline, hist_with_errors, function_with_band, stamp` if desired.
+
+
+___
+
+Bugs, Fixes, Ideas, or Questions? Contact us at rmastand@berkeley.edu and rikab@mit.edu!
