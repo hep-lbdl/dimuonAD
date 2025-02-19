@@ -20,7 +20,7 @@ The events are split into (28*2) files -- for both the muon and the analysis obj
 
 ### Manual download and skimming
     
-If you would like to use other event variables, you will need to skim the root files from the Open Data record yourself. Instructions for how to skim the CMS NanoAOD Open Data are given in [this tutorial](https://opendata.cern.ch/docs/cms-getting-started-nanoaod). If you decide to manually skim the files, you may find the script `00_process_skimmed_root_files.py` helpful as a starting point to extract relevant features from the skimmed `ROOT` files and save them into smaller pickle arrays, identical to the format on the official Zenodo.
+If you would like to use other event variables, you will need to skim the root files from the Open Data record yourself. Instructions for how to skim the CMS NanoAOD Open Data are given in [this tutorial](https://opendata.cern.ch/docs/cms-getting-started-nanoaod). If you decide to manually skim the files, you may find the folder `skim_helpers` useful, as well as the script `00_process_skimmed_root_files.py` helpful as a starting point to extract relevant features from the skimmed `ROOT` files and save them into smaller pickle arrays, identical to the format on the official Zenodo.
 
 ### Calculate additional features and compile
 The script `01_concatenate_and_filter_data.py` compiles all analysis objects and root files into a single pickle array, after filtering events with at least 2 muons that pass the `Muon_tightId` criteria. In addition, a number of dimuon observables are calculated and saved out.
