@@ -4,7 +4,7 @@ This repository contains all the scripts needed to generate the plots in the pap
 
 The analysis is based on the [DoubleMuon primary dataset from RunH of 2016](https://opendata.cern.ch/record/30555).
 
-<img src="https://github.com/hep-lbdl/dimuonAD/blob/rrm_edits/plots/png_render.png" alt="drawing" style="width:400px;"/>
+<img src="https://github.com/hep-lbdl/dimuonAD/plots/png_render.png" alt="drawing" style="width:400px;"/>
 
 
 ## Step 0: Data preparation
