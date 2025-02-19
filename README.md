@@ -16,15 +16,7 @@ Jet variables: `Jet_pt`, `Jet_eta`, `Jet_phi`, `Jet_mass`, `Jet_nConstituents`, 
 
 In addition, we store the triggering information for all 40 triggers listed on the Open Data record page. 
     
-The events are split into (28*2) files -- for both the muon and the analysis objects, there are 28 files corresponding to the 28 `ROOT` files in the CMS Open Data record for the dataset. 
-
-To acquire the data, run the following commands
-```
-mkdir <data_storage_dir>/precompiled_data/skimmed_data_2016H_30555
-cd <data_storage_dir>/precompiled_data/skimmed_data_2016H_30555
-TODO
-```
-`<data_storage_dir>` should be added into the relevant line of `workflow.yaml`.
+The events are split into (28*2) files -- for both the muon and the analysis objects, there are 28 files corresponding to the 28 `ROOT` files in the CMS Open Data record for the dataset. The data should be placed in a directory `<data_storage_dir>`, which should be added into the relevant line of `workflow.yaml`.
 
 ### Manual download and skimming
     
