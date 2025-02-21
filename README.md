@@ -1,6 +1,6 @@
 ## Associated Code: Isolating Unisolated Upsilons with Anomaly Detection in CMS Open Data
 
-This repository contains all the scripts needed to generate the plots in the paper [link to upsilon paper].
+This repository contains all the scripts needed to generate the plots in [this paper](https://arxiv.org/abs/2502.14036).
 
 The analysis is based on the [DoubleMuon primary dataset from RunH of 2016](https://opendata.cern.ch/record/30555).
 
