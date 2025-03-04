@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-workflow", "--workflow_path", default="workflow", help='ID associated with the directory')
 
 # data-specific arguments
-parser.add_argument("-bootstrap", "--bootstrap")
+parser.add_argument("-bootstrap", "--bootstrap", default="bootstrap0")
 parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
 parser.add_argument("-fit", "--bkg_fit_degree", default=5, type=int)
 parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
@@ -64,8 +64,9 @@ for key in data_dict.keys():
     data_dict[key] = np.vstack(data_dict[key])
 
 # BDT HYPERPARAMETERS 
-with open(f"{args.configs_bdt}.yaml", "r") as file:
-    bdt_hyperparams_dict = yaml.safe_load(file)
+with open(f"configs/{args.configs_bdt}.yml", "r") as file:
+    bdt_hyperparams_dict = yaml.safe_load(file)["bdt_hyperparameters"]
+
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_auc_score, roc_curve, accuracy_score
@@ -131,13 +132,17 @@ with open(f"{validations_dir}/{args.feature_id}.txt", "w") as ofile:
     for i, ks_dist in enumerate(ks_dists_samples):
         ofile.write("Feature {i} KL div: {ks_dist}. (for gaussian: {ks_gauss})\n".format(i=i, ks_dist=ks_dist, ks_gauss=ks_dists_gaussians[i]))
         
-    ofile.write("\n")                                  
+    ofile.write("\n")        
+
+    tmp = bdt_hyperparams_dict["n_estimators"]
 
     auc_mean, auc_std, best_epoch = run_discriminator(data_dict["SB"], data_dict["SB_samples"])
-    ofile.write(f"SB total: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
+    ofile.write(f"SB total: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {tmp}.\n")
     
     auc_mean, auc_std, best_epoch = run_discriminator(data_dict["SBL"], data_dict["SBL_samples"])
-    ofile.write(f"SBL: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
+    ofile.write(f"SBL: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {tmp}.\n")
     
     auc_mean, auc_std, best_epoch = run_discriminator(data_dict["SBH"], data_dict["SBH_samples"])
-    ofile.write(f"SBH: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {n_estimators}.\n")
+    ofile.write(f"SBH: auc {auc_mean} \pm {auc_std}. best epoch {best_epoch} of {tmp}.\n")
+
+print("All done.")
