@@ -36,8 +36,8 @@ parser.add_argument("-n_bins", "--num_bins_SR", default=6, type=int)
 # flow-specific arguments
 parser.add_argument("-fid", "--feature_id")
 parser.add_argument('-seeds', '--seeds', default="1")
-parser.add_argument("-c", "--configs_flow", default="CATHODE_8")
-parser.add_argument("-c", "--configs_bdt", default="bdt")
+parser.add_argument("-c_flow", "--configs_flow", default="CATHODE_8")
+parser.add_argument("-c_bdt", "--configs_bdt", default="bdt")
 
 # BDT-specific arguments
 parser.add_argument("-ne", "--num_to_ensemble", default=100, type=int) # how many BDTs to train for a single pseudoexperiment
