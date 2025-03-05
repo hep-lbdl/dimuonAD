@@ -72,7 +72,7 @@ else:
 
 working_dir = workflow["file_paths"]["working_dir"]
 processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
-flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs}/"
+flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/{args.bootstrap}_{samesign_id}/{args.feature_id}/{args.configs_flow}/"
 
 # make dir to save out pickles
 pickle_save_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/pickles/{args.bootstrap}_{samesign_id}/{args.feature_id}/"
@@ -177,8 +177,8 @@ SR_min_rescaled = np.min(banded_test_data["SR"][:,-1])
 SR_max_rescaled = np.max(banded_test_data["SR"][:,-1])
 
 # BDT HYPERPARAMETERS 
-with open(f"{args.configs_bdt}.yaml", "r") as file:
-    bdt_hyperparams_dict = yaml.safe_load(file)
+with open(f"configs/{args.configs_bdt}.yml", "r") as file:
+    bdt_hyperparams_dict = yaml.safe_load(file)["bdt_hyperparameters"]
     
 bdt_hyperparams_dict["n_ensemble"] = args.num_to_ensemble
 
