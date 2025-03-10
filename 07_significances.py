@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[43]:
+# In[1]:
 
 
 import numpy as np
@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import pickle
 from tqdm import tqdm
 import sys
+import os
 
 
 from helpers.physics_functions import get_bins
@@ -23,25 +24,22 @@ from helpers.plotting import newplot, hist_with_outline, hist_with_errors, funct
 latex_flag = False
 np.seterr(divide='ignore')
 
+import argparse
+parser = argparse.ArgumentParser()
 
-
-# This notebook should be run twice:
-# 
-# 1. `train_samesign = False` gives the "standard" results. i.e. we run the studies on the OS samples
-# 2. `train_samesign = True` comes from running the Ml study on the SS samples.
-# 
-# **CAUTION**: for the histograms, we are truly showing the significance as $\frac{S}{\sqrt{B+{\sigma_B}^2}}$, i.e. we are accounting for the background error. For the ROC curves, this error is *NOT* being taken into account (it's not clear to me that we want this background error when we are just citing the background yield for the FPR)
-
-# In[44]:
+parser.add_argument("-fid", "--feature_id")
+parser.add_argument("-train_samesign", "--train_samesign", action="store_true")
+args = parser.parse_args()
 
 
 import yaml
 with open("workflow.yaml", "r") as file:
     workflow = yaml.safe_load(file) 
     
-feature_id = "mix_2"
+feature_id = args.feature_id
 bootstrap_flow = 0 # don't change this from 0
 
+train_samesign = args.train_samesign
 # somewhat complicated code to set naming conventions
 if train_samesign:
     train_data_id = "SS"
@@ -62,29 +60,26 @@ working_dir = workflow["file_paths"]["working_dir"]
 processed_data_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/"+workflow["analysis_keywords"]["name"]+"/processed_data"
 flow_training_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/models/bootstrap{bootstrap_flow}_{train_data_id}/{feature_id}/{configs}/"
 pickle_save_dir = workflow["file_paths"]["data_storage_dir"] +"/projects/" + workflow["analysis_keywords"]["name"]+f"/pickles/bootstrap{bootstrap_flow}_{train_data_id}/{feature_id}/"
-plot_data_dir = "plot_data/"
+plot_data_dir = f"plot_data/{feature_id}/"
+
+os.makedirs(plot_data_dir, exist_ok=True)
+
 
 # basically hard-coded for the PRL 
 num_pseudoexperiments = 1
 n_folds = 5
 
 
-# In[45]:
+# In[3]:
 
 
-num_bins_SR = int(sys.argv[1]) # 16, 12, 8
-
+num_bins_SR = 12 # 16, 12, 8
 
 pseudo_e_to_plot = 0 # this plots the actual data (not a boostrapped version)
-bkg_fit_degree = int(sys.argv[2]) # 3, 4, 5, 6, 7, 8, 9, 10
-
-if len(sys.argv) > 3:
-    train_samesign = bool(sys.argv[3])
-else:
-    train_samesign = False
+bkg_fit_degree = 5
 
 
-# In[46]:
+# In[4]:
 
 
 SB_left = float(workflow["window_definitions"][workflow["analysis_keywords"]["particle"]]["SB_left"])
@@ -102,7 +97,7 @@ print(data_prefix)
 
 # ## Load in the BDT results
 
-# In[47]:
+# In[5]:
 
 
 print(f"Loading data from {flow_training_dir}")
@@ -113,7 +108,7 @@ with open(f"{flow_training_dir}/seed1/configs.txt", "rb") as infile:
 print(f"Feature Set: {feature_set}")
 
 
-# In[48]:
+# In[6]:
 
 
 # if train_samesign = False, this loads in the OS test data
@@ -126,19 +121,11 @@ def load_in_pseudoexperiments(file_string, num_pseudoexps):
 
     master_dict = {}
 
-    if not train_samesign:
-        with open(f"{pickle_save_dir}/{file_string}_bkg_fit_{bkg_fit_degree}_num_bins_{num_bins_SR}_0_1", "rb") as ifile:
-            loc_dict = pickle.load(ifile)
-    else:
-        with open(f"{pickle_save_dir}/{file_string}_{fit_types[bkg_fit_degree]}_{num_bins_SR}_0_1", "rb") as ifile:
-            loc_dict = pickle.load(ifile)
+  
+    with open(f"{pickle_save_dir}/{file_string}_bkg_fit_{bkg_fit_degree}_num_bins_{num_bins_SR}_0_1", "rb") as ifile:
+        loc_dict = pickle.load(ifile)
 
     master_dict = {**loc_dict}
-    # load in the bootstraps
-    for i in range(1, num_pseudoexps):
-        with open(f"{pickle_save_dir}/bkg_samples/bootstrap{i}/{file_string}_{fit_types[bkg_fit_degree]}_{num_bins_SR}_0_1", "rb") as ifile:
-            loc_dict = pickle.load(ifile)
-            master_dict[i] = loc_dict[0]
     return master_dict
 
 num_to_plot = num_pseudoexperiments
@@ -167,7 +154,7 @@ with open(f"{processed_data_dir}/preprocessing_info_bootstrap{bootstrap_flow}", 
      preprocessing_info = pickle.load(ifile)
 
 
-# In[49]:
+# In[7]:
 
 
 import pickle
@@ -186,10 +173,10 @@ with open(path_to_OS_data, "rb") as infile:
 
 # ## Plot histograms for a small number of FPR thresholds
 
-# In[50]:
+# In[8]:
 
 
-fpr_thresholds = [1, 0.25, 0.1, 0.05, 0.01, 0.005, 0.001]
+fpr_thresholds = [1, 0.25, 0.1, 0.05, 0.01, 0.005]
 
 
 # Save the FPR thresholds
@@ -210,7 +197,7 @@ for pseudo_e in range(num_pseudoexperiments):
             score_cutoffs[pseudo_e][i_fold][threshold] = loc_score_cutoff
 
 
-# In[51]:
+# In[9]:
 
 
 def plot_upsilon_resonances(ax):
@@ -227,7 +214,7 @@ def plot_upsilon_resonances(ax):
     # ax.text(10.580 * 0.995, 1e4, r"$\Upsilon(4S)$", rotation=90, verticalalignment="center", horizontalalignment="right", fontsize=10)
 
 
-# In[52]:
+# In[10]:
 
 
 def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_cutoffs_by_fold, 
@@ -415,7 +402,7 @@ def plot_histograms_with_fits(fpr_thresholds, data_dict_by_fold, scores_dict_by_
     
 
 
-# In[53]:
+# In[11]:
 
 
 """
@@ -431,7 +418,7 @@ with open(f"{plot_data_dir}{data_prefix}_histogram_data_{bkg_fit_degree}_{num_bi
 print("Saved Data to " + f"{plot_data_dir}{data_prefix}_histogram_data_{bkg_fit_degree}_{num_bins_SR}.pickle")
 
 
-# In[54]:
+# In[12]:
 
 
 """
@@ -448,7 +435,7 @@ with open(f"{plot_data_dir}{data_prefix}_histogram_data_alt_{bkg_fit_degree}_{nu
 
 # # Feature Plots
 
-# In[55]:
+# In[13]:
 
 
 from helpers.data_transforms import scaled_to_physical_transform
@@ -466,15 +453,48 @@ def plot_features(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_
     n_features = len(feature_set) - 1
     nbins = 40
 
+
     bins = {
         "dimu_pt": np.linspace(0, 150, nbins),
+        "dimu_eta": np.linspace(-5, 5, nbins),
+        "mu0_pt": np.linspace(0, 120, nbins),
+        "mu1_pt": np.linspace(0, 120, nbins),
+        "mu0_eta": np.linspace(-3, 3, nbins),
+        "mu1_eta": np.linspace(-3, 3, nbins),
         "mu0_ip3d": np.logspace(-6, 0, nbins),
         "mu1_ip3d": np.logspace(-6, 0, nbins),
+        "mu0_iso04": np.logspace(0, 0, nbins),
+        "mu1_iso04": np.logspace(-6, 0, nbins),
+        "mumu_deltapT": np.linspace(0, 100, nbins),
+        "mumu_deltaR": np.linspace(0, 1, nbins),
+    }
+    plot_log = {
+        "dimu_pt":False,
+        "dimu_eta": False,
+        "mu0_pt": False,
+        "mu1_pt": False,
+        "mu0_eta": False,
+        "mu1_eta": False,
+        "mu0_ip3d": True,
+        "mu1_ip3d": True,
+        "mu0_iso04": True,
+        "mu1_iso04":True,
+        "mumu_deltapT": False,
+        "mumu_deltaR": False,
     }
     labels = {
         "dimu_pt": "Dimuon $p_T$ [GeV]",
+        "dimu_eta": "Dimuon $\eta$",
+        "mu0_pt": "Muon 1 $p_T$ [GeV]",
+        "mu1_pt": "Muon 2 $p_T$ [GeV]",
+        "mu0_eta": "Muon 1 $\eta$",
+        "mu1_eta": "Muon 2  $\eta$",
         "mu0_ip3d": "Muon 1 IP3D [cm]",
         "mu1_ip3d": "Muon 2 IP3D [cm]",
+        "mu0_iso04": "Muon 1 iso04",
+        "mu1_iso04": "Muon 2 iso04",
+        "mumu_deltapT": "Muon $\Delta p_T$ [GeV]",
+        "mumu_deltaR": "Muon $\Delta R$",
     }
 
 
@@ -550,7 +570,7 @@ def plot_features(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_
 
             ax[i_feat].hist( filtered_features[i_feat], bins=bins[feature_set[i_feat]], lw = 3, histtype = "step", color = f"C{t}",label = label_string, alpha = 0.75)
             ax[i_feat].set_yscale("log")
-            if i_feat in [1, 2]:
+            if plot_log[feature_set[i_feat]]:
                 ax[i_feat].set_xscale("log")
                 ax[i_feat].set_xticks([1e-3, 1e-2, 1e-1])
             ax[i_feat].set_xlabel(labels[feature_set[i_feat]])
@@ -573,7 +593,7 @@ def plot_features(fpr_thresholds, data_dict_by_fold, scores_dict_by_fold, score_
     return save_data
 
 
-# In[56]:
+# In[14]:
 
 
 save_data = plot_features(fpr_thresholds, all_test_data_splits[pseudo_e_to_plot], all_scores_splits[pseudo_e_to_plot], score_cutoffs[pseudo_e_to_plot], scaler, SR_left, SR_right, take_score_avg=False)
@@ -584,7 +604,7 @@ with open(f"{plot_data_dir}{data_prefix}_feature_data_{bkg_fit_degree}_{num_bins
 
 # # Signficance Plots
 
-# In[57]:
+# In[15]:
 
 
 n_folds = 5
@@ -674,6 +694,9 @@ def get_classifier_metrics_high_stats(dataset_by_pseudo_e, scores_by_pseudo_e, m
                 mu = (S) / (S + B)
                 likelihood_ratios = (all_scores) / (1 - all_scores)
                 weights = (likelihood_ratios - (1-mu)) / mu
+                plt.figure()
+                plt.hist(weights)
+                plt.show()
                 weights = np.clip(weights, 0, 1e9)
 
                 popt, pcov, chi2, y_vals, n_dof = curve_fit_m_inv(all_masses, bkg_fit_degree, SR_left, SR_right, plot_bins_left, plot_bins_right, plot_centers_SB, weights = weights)
@@ -688,7 +711,7 @@ def get_classifier_metrics_high_stats(dataset_by_pseudo_e, scores_by_pseudo_e, m
 
 
 
-# In[58]:
+# In[16]:
 
 
 # Reformat alt to not have the 'alt' key
@@ -700,7 +723,7 @@ for pseudo_e in range(num_pseudoexperiments):
 
 
 
-# In[59]:
+# In[17]:
 
 
 significances, full_q0 = get_classifier_metrics_high_stats(all_test_data_splits, all_scores_splits, scaler)
@@ -719,13 +742,13 @@ with open(f"{plot_data_dir}{data_prefix}_full_q0_alt_{bkg_fit_degree}_{num_bins_
 
 
 
-# In[60]:
+# In[18]:
 
 
 from helpers.plotting import feature_bins
 
 
-def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_degree, title, SB_left, SR_left, SR_right, SB_right, flip = False, index = 0, random = False):
+def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_degree, title, SB_left, SR_left, SR_right, SB_right, flip = False, abs_val = False, index = 0, random = False):
     """
     Plot the feature cuts for the given data, scores, and score cutoffs.
 
@@ -775,9 +798,11 @@ def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_degree, title, 
         masses = mass_scalar.inverse_transform(np.array(all_nfolds[:,-1]).reshape(-1,1))[:,0]
 
 
-
+        if abs_val:
+            feature_of_interest = np.abs(feature_of_interest)
         if flip:
             feature_of_interest = -feature_of_interest
+        
            
 
         # Split into SBL, SR, and SBH
@@ -844,35 +869,66 @@ def feature_cut_ROCS(feature, test_data_splits, mass_scalar, fit_degree, title, 
     return significances
 
 
-# In[61]:
+# In[19]:
 
 
 # for i in range(n_folds):
 #     all_test_data_splits[pseudo_e][i][:,0] = all_test_data_splits[pseudo_e][i][:,1] + all_test_data_splits[pseudo_e][i][:,2]
 
 
-# In[66]:
+# In[ ]:
 
 
 feature_SIGs = {}
 feature_SIGs_alt = {}
 
-flip_features = [False, True, True, False] 
+flip_features_dict = {
+        "dimu_pt":False,
+        "dimu_eta": True,
+        "mu0_pt": False,
+        "mu1_pt": False,
+        "mu0_eta": True,
+        "mu1_eta": True,
+        "mu0_ip3d": True,
+        "mu1_ip3d": True,
+        "mu0_iso04": True,
+        "mu1_iso04":True,
+        "mumu_deltapT": True,
+        "mumu_deltaR": False,
+ }
 
+abs_features_dict = {
+        "dimu_pt":False,
+        "dimu_eta": True,
+        "mu0_pt": False,
+        "mu1_pt": False,
+       "mu0_eta": True,
+        "mu1_eta": True,
+        "mu0_ip3d": False,
+        "mu1_ip3d": False,
+        "mu0_iso04": False,
+        "mu1_iso04":False,
+        "mumu_deltapT": False,
+        "mumu_deltaR": False,
+ }
+
+
+flip_features = [flip_features_dict[feat] for feat in feature_set[:-1]] + [False] # random is false
+abs_val_features = [abs_features_dict[feat] for feat in feature_set[:-1]] + [False] # random is false
 
 
 # Opposite Sign
-for (i, feature) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "random"]):
+for (i, feature) in enumerate(feature_set[:-1] + ["random"]):
     print(feature)
-    feature_SIGs[feature] = feature_cut_ROCS(feature, all_test_data_splits, scaler, bkg_fit_degree, f"", SB_left, SR_left, SR_right, SB_right, flip = flip_features[i], index = i, random = (feature == "random"))
+    feature_SIGs[feature] = feature_cut_ROCS(feature, all_test_data_splits, scaler, bkg_fit_degree, f"", SB_left, SR_left, SR_right, SB_right, flip = flip_features[i], abs_val = abs_val_features[i], index = i, random = (feature == "random"))
 
     with open(f"{plot_data_dir}{data_prefix}_significances_{feature}_{bkg_fit_degree}_{num_bins_SR}.pickle", "wb") as ofile:
         pickle.dump(feature_SIGs[feature], ofile)
 
 # Same Sign
-for (i, feature) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "random"]):
+for (i, feature) in enumerate(feature_set[:-1] + ["random"]):
     print(feature)
-    feature_SIGs_alt[feature] = feature_cut_ROCS(feature, all_alt_data_splits_formatted, scaler, bkg_fit_degree, f"", SB_left, SR_left, SR_right, SB_right, flip = flip_features[i], index = i, random = (feature == "random"))
+    feature_SIGs_alt[feature] = feature_cut_ROCS(feature, all_alt_data_splits_formatted, scaler, bkg_fit_degree, f"", SB_left, SR_left, SR_right, SB_right, flip = flip_features[i], abs_val = abs_val_features[i], index = i, random = (feature == "random"))
 
     with open(f"{plot_data_dir}{data_prefix}_significances_alt_{feature}_{bkg_fit_degree}_{num_bins_SR}.pickle", "wb") as ofile:
         pickle.dump(feature_SIGs_alt[feature], ofile)
@@ -880,7 +936,7 @@ for (i, feature) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "random"]):
   
 
 
-# In[63]:
+# In[ ]:
 
 
 # Add the ordinary TPR, FPR, ROC, SIC to dictionary with key "CATHODE"
@@ -888,13 +944,13 @@ feature_SIGs["CATHODE"] = significances
 feature_SIGs_alt["CATHODE"] = significances_alt
 
 
-# In[64]:
+# In[ ]:
 
 
 # FPR Variant of SIC
 fig, ax = newplot("full", use_tex = latex_flag)
-colors = ["red", "gold", "green", "blue"]
-for (i, key) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "CATHODE"]):
+colors = ["red", "gold", "green", "pink", "purple", "blue"]
+for (i, key) in enumerate(feature_set[:-1] + ["CATHODE"]):
 
     SIG_observed = feature_SIGs[key][:,0]
     ax.plot(fpr_thresholds_finegrained, SIG_observed, color = colors[i])
@@ -911,7 +967,7 @@ for i in range(num_features):
 
 
 # Add the keys in a seperate column with filled color
-for (i, key) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "CATHODE"]):
+for (i, key) in enumerate(feature_set[:-1] + ["CATHODE"]):
     ax.hist([-1], color = colors[i], alpha = 0.25, label = key, histtype = "stepfilled")
 
 
@@ -951,7 +1007,7 @@ plt.xscale("log")
 plt.ylim(0.0, 12)
 
 
-# In[65]:
+# In[ ]:
 
 
 # same plot but for the alternative data
@@ -959,7 +1015,7 @@ plt.ylim(0.0, 12)
 fig, ax = newplot("full", use_tex = latex_flag)
 colors = ["red", "gold", "green", "blue", "black"]
 
-for (i, key) in enumerate(["dimu_pt", "mu0_ip3d", "mu1_ip3d", "CATHODE"]):
+for (i, key) in enumerate(feature_set[:-1] + ["CATHODE"]):
 
     SIG_observed = feature_SIGs_alt[key][:,0]
 
@@ -1020,42 +1076,4 @@ plt.ylim(0.0, 10)
 # plt.yscale("log")
 
 
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
+print("all done!")
